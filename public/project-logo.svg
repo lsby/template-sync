@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="pl-grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#6366F1" />
+    </linearGradient>
+    <linearGradient id="pl-grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#A855F7" />
+    </linearGradient>
+  </defs>
+
+  <!-- Top Isometric Layer (Template) -->
+  <polygon points="24,9 37,15 24,21 11,15" fill="rgba(56, 189, 248, 0.12)" stroke="url(#pl-grad1)" stroke-width="2.5" stroke-linejoin="round" fill-opacity="0.8" />
+  
+  <!-- Bottom Isometric Layer (Project) -->
+  <polygon points="24,27 37,33 24,39 11,33" fill="rgba(168, 85, 247, 0.12)" stroke="url(#pl-grad2)" stroke-width="2.5" stroke-linejoin="round" fill-opacity="0.8" />
+
+  <!-- Connecting Git Sync Branch Line -->
+  <path d="M 24 15 V 33 M 24 24 C 31 24 33 19 33 15" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.95" />
+
+  <!-- Git Commit Nodes -->
+  <circle cx="24" cy="15" r="2.5" fill="#38BDF8" stroke="#FFFFFF" stroke-width="1" />
+  <circle cx="24" cy="33" r="2.5" fill="#A855F7" stroke="#FFFFFF" stroke-width="1" />
+  <circle cx="33" cy="15" r="2.5" fill="#6366F1" stroke="#FFFFFF" stroke-width="1" />
+</svg>
