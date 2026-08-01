@@ -417,9 +417,9 @@ export class 落地页组件 extends 组件基类<发出事件类型, 监听事�
         <main>
           <section class="hero">
             <div class="badge">Git 模板同步重建方案</div>
-            <h1>无缝找回由模板创建的项目<br />与模板仓库间丢失的 Git 历史</h1>
+            <h1>告别人肉比对<br />让 Git 帮你合模板</h1>
             <p>
-              消除项目由于复制或初始化导致与源模板断开提交关联的困境。无需手动人工比对改动，精准重构 parent 提交拓扑，一键生成供 git merge 或 git rebase 的本地分支。
+              帮项目重新搭上模板的 Git 班车，轻松拉取并合并上游的所有功能与修复。
             </p>
             <div class="hero-actions">
               <a href="https://github.com/lsby/template-sync" target="_blank" class="btn btn-primary">

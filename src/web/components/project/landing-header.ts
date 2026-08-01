@@ -2,6 +2,7 @@ import { 组件基类 } from '../../base/base'
 import { 创建元素 } from '../../global/tools/create-element'
 
 let 公司标志图片 = new URL('../../../../public/kedaya-logo.svg', import.meta.url).toString()
+let 项目标志图片 = new URL('../../../../public/project-logo.svg', import.meta.url).toString()
 
 type 发出事件类型 = { 导航点击: { 目标id: string } }
 type 监听事件类型 = {}
@@ -103,20 +104,14 @@ export class 落地页头部组件 extends 组件基类<发出事件类型, 监�
     })
 
     // Logo 图标
-    let 标志图标 = 创建元素('div', {
-      textContent: 'TS',
+    let 标志图标 = 创建元素('img', {
+      src: 项目标志图片,
       style: {
         width: '36px',
         height: '36px',
         borderRadius: '10px',
-        background: 'linear-gradient(135deg, #6366f1, #38bdf8)',
-        display: 'grid',
-        placeItems: 'center',
-        fontWeight: '900',
-        fontSize: '18px',
-        color: '#ffffff',
-        boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
-        transition: 'box-shadow 0.2s ease',
+        objectFit: 'contain',
+        transition: 'transform 0.2s ease',
       },
     })
 
@@ -139,12 +134,10 @@ export class 落地页头部组件 extends 组件基类<发出事件类型, 监�
     当前项目区.appendChild(标志文本)
 
     当前项目区.onmouseenter = (): void => {
-      当前项目区.style.transform = 'scale(1.02)'
-      标志图标.style.boxShadow = '0 0 15px rgba(24, 144, 255, 0.4)'
+      当前项目区.style.transform = 'scale(1.03)'
     }
     当前项目区.onmouseleave = (): void => {
       当前项目区.style.transform = 'scale(1.0)'
-      标志图标.style.boxShadow = '0 4px 14px rgba(99, 102, 241, 0.4)'
     }
     当前项目区.onclick = (): void => {
       window.location.assign('./landing.html')
