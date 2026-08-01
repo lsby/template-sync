@@ -36,8 +36,6 @@ export class 落地页演示组件 extends 组件基类<{}, {}> {
   }
 
   private 当前步骤 = 0
-  private 播放定时器: number | null = null
-  private 正在自动播放 = false
 
   private 元素<T extends HTMLElement>(id: string): T {
     let element = this.shadow.getElementById(id)
@@ -118,17 +116,6 @@ export class 落地页演示组件 extends 组件基类<{}, {}> {
         .btn-ctrl:disabled {
           opacity: 0.4;
           cursor: not-allowed;
-        }
-
-        .btn-play {
-          background: rgba(99, 102, 241, 0.2);
-          border-color: rgba(99, 102, 241, 0.4);
-          color: #a5b4fc;
-        }
-
-        .btn-play:hover:not(:disabled) {
-          background: rgba(99, 102, 241, 0.35);
-          color: #ffffff;
         }
 
         /* 步骤指示栏 */
@@ -363,7 +350,6 @@ export class 落地页演示组件 extends 组件基类<{}, {}> {
           </div>
           <div class="controls">
             <button class="btn-ctrl" id="btn-prev">上一步</button>
-            <button class="btn-ctrl btn-play" id="btn-toggle-play">自动播放</button>
             <button class="btn-ctrl" id="btn-next">下一步</button>
             <button class="btn-ctrl" id="btn-reset">重置</button>
           </div>
@@ -456,7 +442,6 @@ export class 落地页演示组件 extends 组件基类<{}, {}> {
     this.元素<HTMLButtonElement>('btn-prev').onclick = (): void => this.上一页()
     this.元素<HTMLButtonElement>('btn-next').onclick = (): void => this.下一页()
     this.元素<HTMLButtonElement>('btn-reset').onclick = (): void => this.重置()
-    this.元素<HTMLButtonElement>('btn-toggle-play').onclick = (): void => this.切换自动播放()
 
     演示步骤列表.forEach((_, idx) => {
       let item = this.shadow.getElementById(`indicator-${idx}`)
@@ -482,45 +467,12 @@ export class 落地页演示组件 extends 组件基类<{}, {}> {
     if (this.当前步骤 < 演示步骤列表.length - 1) {
       this.当前步骤++
       this.更新步骤视图()
-    } else if (this.正在自动播放 === true) {
-      this.当前步骤 = 0
-      this.更新步骤视图()
     }
   }
 
   private 重置(): void {
-    this.停止自动播放()
     this.当前步骤 = 0
     this.更新步骤视图()
-  }
-
-  private 切换自动播放(): void {
-    if (this.正在自动播放 === true) {
-      this.停止自动播放()
-    } else {
-      this.开始自动播放()
-    }
-  }
-
-  private 开始自动播放(): void {
-    this.正在自动播放 = true
-    let btnPlay = this.元素<HTMLButtonElement>('btn-toggle-play')
-    btnPlay.textContent = '暂停播放'
-
-    if (this.播放定时器 !== null) clearInterval(this.播放定时器)
-    this.播放定时器 = window.setInterval(() => {
-      this.下一页()
-    }, 4500)
-  }
-
-  private 停止自动播放(): void {
-    this.正在自动播放 = false
-    let btnPlay = this.元素<HTMLButtonElement>('btn-toggle-play')
-    btnPlay.textContent = '自动播放'
-    if (this.播放定时器 !== null) {
-      clearInterval(this.播放定时器)
-      this.播放定时器 = null
-    }
   }
 
   private 更新步骤视图(): void {
@@ -540,7 +492,7 @@ export class 落地页演示组件 extends 组件基类<{}, {}> {
     let btnPrev = this.元素<HTMLButtonElement>('btn-prev')
     let btnNext = this.元素<HTMLButtonElement>('btn-next')
     btnPrev.disabled = this.当前步骤 === 0
-    btnNext.disabled = this.当前步骤 === 演示步骤列表.length - 1 && this.正在自动播放 === false
+    btnNext.disabled = this.当前步骤 === 演示步骤列表.length - 1
 
     // 更新解说文字
     this.元素<HTMLElement>('exp-title').textContent = curr.标题
