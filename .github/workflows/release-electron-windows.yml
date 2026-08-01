@@ -1,0 +1,45 @@
+name: Build and Release Electron Windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Generate Database
+        run: pnpm run db:push:prod:electron
+
+      - name: Build Electron App
+        run: pnpm run public:electron
+
+      - name: Rename and Zip
+        run: |
+          $TAG_NAME = "${{ github.ref_name }}"
+          Compress-Archive -Path "release\electron\win-unpacked\*" -DestinationPath "lsby-template-sync-$TAG_NAME-windows.zip"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: lsby-template-sync-${{ github.ref_name }}-windows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
