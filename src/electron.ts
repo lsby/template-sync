@@ -1,9 +1,10 @@
-import { app, BrowserWindow, Menu, nativeImage, screen, Tray } from 'electron'
+import { app, BrowserWindow, screen } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { App } from './app/app'
 import { 计算补偿后的窗口配置, 验证并修正窗口 } from './electron/multi-display'
 import { 检查端口可用, 获取随机可用端口 } from './electron/port-utils'
+import { 注册模板同步IPC } from './electron/template-sync-ipc'
 import { 保存窗口状态, 检查窗口是否在可见区域内, 获取默认窗口位置, 读取窗口状态 } from './electron/window-state'
 import { 环境变量 } from './global/env'
 import { globalLog } from './global/global'
@@ -23,62 +24,6 @@ async function main(): Promise<void> {
 }
 let 已经启动服务器 = false
 export let 主窗口: BrowserWindow | null = null
-export let 系统托盘: Tray | null = null
-
-function 创建系统托盘(): void {
-  if (系统托盘 !== null) return
-  try {
-    let 图标Base64 =
-      'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAZSURBVDhPY2AYBaNgFIyCoUAYGBgY/h8GAOC0A/82b9T8AAAAAElFTkSuQmCC'
-    let 图标数据 = nativeImage.createFromBuffer(Buffer.from(图标Base64, 'base64'))
-    系统托盘 = new Tray(图标数据)
-    系统托盘.setToolTip('Playground Service')
-
-    let 菜单模板: Electron.MenuItemConstructorOptions[] = [
-      {
-        label: '显示主窗口',
-        click: (): void => {
-          if (主窗口 !== null) {
-            if (主窗口.isMinimized() === true) 主窗口.restore()
-            主窗口.show()
-            主窗口.focus()
-          }
-        },
-      },
-      {
-        label: '切换开发者工具',
-        click: (): void => {
-          if (主窗口 !== null) {
-            if (主窗口.webContents.isDevToolsOpened() === true) {
-              主窗口.webContents.closeDevTools()
-            } else {
-              主窗口.webContents.openDevTools({ mode: 'detach' })
-            }
-          }
-        },
-      },
-      { type: 'separator' },
-      {
-        label: '退出程序',
-        click: (): void => {
-          app.exit(0)
-        },
-      },
-    ]
-
-    let 上下文菜单 = Menu.buildFromTemplate(菜单模板)
-    系统托盘.setContextMenu(上下文菜单)
-    系统托盘.on('click', () => {
-      if (主窗口 !== null) {
-        if (主窗口.isMinimized() === true) 主窗口.restore()
-        主窗口.show()
-        主窗口.focus()
-      }
-    })
-  } catch (错误) {
-    console.error('创建系统托盘失败:', 错误)
-  }
-}
 
 let 资源目录 = process.resourcesPath
 let 预加载脚本路径 = path.join(资源目录, 'preload.js')
@@ -124,9 +69,14 @@ async function 创建主窗口(): Promise<void> {
 
   let 预加载脚本 = [
     '// 该文件由脚本自动生成, 请勿修改.',
-    "const { contextBridge, webUtils } = require('electron')",
+    "const { contextBridge, ipcRenderer, webUtils } = require('electron')",
     "contextBridge.exposeInMainWorld('electronAPI', {",
-    '  获取文件路径: (file) => webUtils.getPathForFile(file)',
+    '  获取文件路径: (file) => webUtils.getPathForFile(file),',
+    "  选择目录: () => ipcRenderer.invoke('template-sync:select-directory'),",
+    "  列出模板分支: (模板路径) => ipcRenderer.invoke('template-sync:list-branches', 模板路径),",
+    "  分析仓库: (参数) => ipcRenderer.invoke('template-sync:analyze', 参数),",
+    "  创建嫁接: (参数) => ipcRenderer.invoke('template-sync:create-graft', 参数),",
+    "  打开目录: (目录) => ipcRenderer.invoke('template-sync:open-directory', 目录)",
     '})',
     '',
   ].join('\n')
@@ -239,13 +189,12 @@ async function 创建主窗口(): Promise<void> {
 }
 
 app.on('ready', async () => {
-  创建系统托盘()
+  注册模板同步IPC()
   await 创建主窗口()
 })
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 app.on('activate', async () => {
-  创建系统托盘()
   if (主窗口 === null) await 创建主窗口()
 })

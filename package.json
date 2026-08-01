@@ -1,6 +1,6 @@
 {
-  "name": "@lsby/playground-ts-service",
-  "version": "0.0.0",
+  "name": "@lsby/template-sync",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./dist/src/electron.js",
@@ -9,7 +9,7 @@
     "./src/global/env-provider.ts": "./src/web/mock/env-provider-mock.ts"
   },
   "bin": {
-    "lsby-playground-ts-service": "dist/src/server.js"
+    "template-sync": "dist/src/server.js"
   },
   "files": [
     "dist"
@@ -182,8 +182,8 @@
   },
   "build": {
     "npmRebuild": false,
-    "appId": "lsby.playground.ts.service",
-    "productName": "lsby-playground-ts-service",
+    "appId": "lsby.template-sync",
+    "productName": "Template Sync",
     "asar": false,
     "files": [
       "dist/**/*",
