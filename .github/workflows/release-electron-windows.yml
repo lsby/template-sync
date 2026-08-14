@@ -30,16 +30,11 @@ jobs:
         run: pnpm run db:push:prod:electron
 
       - name: Build Electron App
-        run: pnpm run public:electron
-
-      - name: Rename and Zip
-        run: |
-          $TAG_NAME = "${{ github.ref_name }}"
-          Compress-Archive -Path "release\electron\win-unpacked\*" -DestinationPath "lsby-template-sync-$TAG_NAME-windows.zip"
+        run: pnpm run public:electron -- --zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: lsby-template-sync-${{ github.ref_name }}-windows.zip
+          files: release/electron/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
