@@ -10,8 +10,8 @@ if exist "data\update-in-progress" (
 )
 
 set "ENV_FILE_PATH=app\.env\.env.production.electron"
-set "DEBUG=@lsby:*,@lsby:playground-ts-service:*"
-start /wait "" "app\lsby-playground-ts-service.exe"
+set "DEBUG=@lsby:*,@lsby:template-sync:*"
+start /wait "" "app\template-sync.exe"
 if errorlevel 1 (
   echo.
   echo 程序异常退出，退出码: %errorlevel%

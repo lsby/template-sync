@@ -82,9 +82,7 @@ async function 执行构建(): Promise<void> {
       await 移动目录并等待文件句柄释放(构建程序目录, path.join(生成目录, 'app'))
     } else {
       let 子项组 = fs.existsSync(待清理路径) === true ? fs.readdirSync(待清理路径) : []
-      let macApp目录 = 子项组.find(
-        (项) => fs.existsSync(path.join(待清理路径, 项, 'lsby-playground-ts-service.app')) === true,
-      )
+      let macApp目录 = 子项组.find((项) => fs.existsSync(path.join(待清理路径, 项, 'template-sync.app')) === true)
       let macTarget目录 = 子项组.find((项) => 项.startsWith('mac-'))
       let 目标目录名 = macApp目录 ?? macTarget目录 ?? 子项组.find((项) => 项.startsWith('mac')) ?? 'mac'
       生成目录 = path.join(待清理路径, 目标目录名)
@@ -99,7 +97,7 @@ async function 执行构建(): Promise<void> {
     let 环境目标路径组: string[] = [
       path.join(process.platform === 'win32' ? path.join(生成目录, 'app') : 生成目录, '.env'),
     ]
-    let appResourcesEnv = path.join(生成目录, 'lsby-playground-ts-service.app/Contents/Resources/app/.env')
+    let appResourcesEnv = path.join(生成目录, 'template-sync.app/Contents/Resources/app/.env')
     if (fs.existsSync(path.dirname(appResourcesEnv)) === true) {
       环境目标路径组.push(appResourcesEnv)
     }
@@ -120,7 +118,7 @@ async function 执行构建(): Promise<void> {
 
     // 复制数据库
     let 数据库目标路径组: string[] = [path.join(生成目录, process.platform === 'win32' ? 'data/db' : 'db')]
-    let appResourcesDb = path.join(生成目录, 'lsby-playground-ts-service.app/Contents/Resources/app/db')
+    let appResourcesDb = path.join(生成目录, 'template-sync.app/Contents/Resources/app/db')
     if (fs.existsSync(path.dirname(appResourcesDb)) === true) {
       数据库目标路径组.push(appResourcesDb)
     }
@@ -139,7 +137,7 @@ async function 执行构建(): Promise<void> {
 
     if (process.platform === 'win32') {
       let 更新脚本源目录 = path.join(__当前目录名, 'updater')
-      for (let 文件名 of ['lsby-playground-ts-service-debug.cmd', 'update.cmd']) {
+      for (let 文件名 of ['template-sync-debug.cmd', 'update.cmd']) {
         let 源路径 = path.join(更新脚本源目录, 文件名)
         let 目标路径 = path.join(生成目录, 文件名)
         fs.copyFileSync(源路径, 目标路径)
@@ -152,7 +150,7 @@ async function 执行构建(): Promise<void> {
 
       let Prisma迁移名称组 = 获得Prisma迁移名称组(path.join(生成目录, 'app/prisma/migrations'))
       if (Prisma迁移名称组.length > 0) {
-        let Electron程序路径 = path.join(生成目录, 'app/lsby-playground-ts-service.exe')
+        let Electron程序路径 = path.join(生成目录, 'app/template-sync.exe')
         let PrismaCli路径 = path.join(生成目录, 'app/resources/app/node_modules/prisma/build/index.js')
         let Prisma配置路径 = path.join(生成目录, 'app/prisma.config.ts')
         let Prisma环境 = {
@@ -172,14 +170,14 @@ async function 执行构建(): Promise<void> {
       // 生成 start.exe (C# 引导器)
       let cscPath = 寻找内置Csc编译器()
       let launcher源文件 = path.join(__当前目录名, 'launcher', 'launcher.cs')
-      let runExe路径 = path.join(生成目录, 'lsby-playground-ts-service-start.exe')
+      let runExe路径 = path.join(生成目录, 'template-sync-start.exe')
 
       if (cscPath === null || fs.existsSync(cscPath) === false) {
-        console.warn(`⚠️ 未找到 C# 编译器，跳过 lsby-playground-ts-service-start.exe 的编译。`)
+        console.warn(`⚠️ 未找到 C# 编译器，跳过 template-sync-start.exe 的编译。`)
       } else if (fs.existsSync(launcher源文件) === false) {
-        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 lsby-playground-ts-service-start.exe 的编译。`)
+        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 template-sync-start.exe 的编译。`)
       } else {
-        console.log('✅ 正在编译引导器 lsby-playground-ts-service-start.exe ...')
+        console.log('✅ 正在编译引导器 template-sync-start.exe ...')
         try {
           // 使用 /target:exe 避免控制台流异常
           execSync(
@@ -194,9 +192,9 @@ async function 执行构建(): Promise<void> {
       await 生成Electron便携资源(项目根目录, 生成目录, 待清理路径)
     } else {
       // 在 macOS 下为 .app 包挂载内置启动引导器，解决 Finder 直接双击时 launchd 不传 ENV_FILE_PATH 与 cwd=/ 的问题
-      let macOsBinDir = path.join(生成目录, 'lsby-playground-ts-service.app/Contents/MacOS')
-      let 原生可执行文件 = path.join(macOsBinDir, 'lsby-playground-ts-service')
-      let 真实二进制文件 = path.join(macOsBinDir, 'lsby-playground-ts-service-bin')
+      let macOsBinDir = path.join(生成目录, 'template-sync.app/Contents/MacOS')
+      let 原生可执行文件 = path.join(macOsBinDir, 'template-sync')
+      let 真实二进制文件 = path.join(macOsBinDir, 'template-sync-bin')
 
       if (fs.existsSync(原生可执行文件) === true) {
         if (fs.existsSync(真实二进制文件) === true) {
@@ -216,8 +214,8 @@ async function 执行构建(): Promise<void> {
           '  export ENV_FILE_PATH="$OUTER_ENV/.env.production.electron"',
           '  cd "$DIR/../../"',
           'fi',
-          'export DEBUG="@lsby:*,@lsby:playground-ts-service:*"',
-          'exec "$DIR/lsby-playground-ts-service-bin" "$@"',
+          'export DEBUG="@lsby:*,@lsby:template-sync:*"',
+          'exec "$DIR/template-sync-bin" "$@"',
         ].join('\n')
         fs.writeFileSync(原生可执行文件, appLauncher脚本, { encoding: 'utf8', mode: 0o755 })
         console.log(`✅ 已为 .app 成功注入内置启动引导器`)
