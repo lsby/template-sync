@@ -2,6 +2,10 @@
   "name": "@lsby/template-sync",
   "version": "0.1.1",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lsby/playground-ts-service.git"
+  },
   "type": "module",
   "main": "./dist/src/electron.js",
   "browser": {
@@ -83,7 +87,7 @@
     "@capacitor/android": "^7.4.3",
     "@capacitor/core": "^7.4.1",
     "@capacitor/dialog": "^7.0.2",
-    "@lsby/net-core": "^0.14.18",
+    "@lsby/net-core": "^0.14.19",
     "@lsby/net-core-jwt": "^0.5.4",
     "@lsby/net-core-kysely": "^0.6.0",
     "@lsby/ts-env": "^0.0.14",
