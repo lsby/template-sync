@@ -66,11 +66,15 @@ async function 执行构建(): Promise<void> {
       生成目录 = path.join(待清理路径, 'win-unpacked')
     } else {
       let 子项组 = fs.existsSync(待清理路径) === true ? fs.readdirSync(待清理路径) : []
-      let macApp目录 = 子项组.find(
-        (项) => fs.existsSync(path.join(待清理路径, 项, 'lsby-playground-ts-service.app')) === true,
-      )
-      let macTarget目录 = 子项组.find((项) => 项.startsWith('mac-'))
-      let 目标目录名 = macApp目录 ?? macTarget目录 ?? 子项组.find((项) => 项.startsWith('mac')) ?? 'mac'
+      let macApp目录 = 子项组.find((项) => {
+        let 完整路径 = path.join(待清理路径, 项)
+        return (
+          fs.statSync(完整路径).isDirectory() === true &&
+          fs.readdirSync(完整路径).some((子文件) => 子文件.endsWith('.app') === true) === true
+        )
+      })
+      let macTarget目录 = 子项组.find((项) => 项.startsWith('mac-') === true)
+      let 目标目录名 = macApp目录 ?? macTarget目录 ?? 子项组.find((项) => 项.startsWith('mac') === true) ?? 'mac'
       生成目录 = path.join(待清理路径, 目标目录名)
     }
 
@@ -79,11 +83,22 @@ async function 执行构建(): Promise<void> {
       throw new Error(`❌ 生成目录不存在: ${生成目录}`)
     }
 
+    let macApp名 = ''
+    if (process.platform !== 'win32') {
+      let 所有文件 = fs.readdirSync(生成目录)
+      let app项 = 所有文件.find((项) => 项.endsWith('.app') === true)
+      if (app项 !== undefined) {
+        macApp名 = app项
+      }
+    }
+
     // 复制环境变量
     let 环境目标路径组: string[] = [path.join(生成目录, '.env')]
-    let appResourcesEnv = path.join(生成目录, 'lsby-playground-ts-service.app/Contents/Resources/app/.env')
-    if (fs.existsSync(path.dirname(appResourcesEnv)) === true) {
-      环境目标路径组.push(appResourcesEnv)
+    if (macApp名 !== '') {
+      let appResourcesEnv = path.join(生成目录, macApp名, 'Contents/Resources/app/.env')
+      if (fs.existsSync(path.dirname(appResourcesEnv)) === true) {
+        环境目标路径组.push(appResourcesEnv)
+      }
     }
     for (let 目标目录 of 环境目标路径组) {
       确保目录存在(目标目录)
@@ -94,9 +109,11 @@ async function 执行构建(): Promise<void> {
 
     // 复制数据库
     let 数据库目标路径组: string[] = [path.join(生成目录, 'db')]
-    let appResourcesDb = path.join(生成目录, 'lsby-playground-ts-service.app/Contents/Resources/app/db')
-    if (fs.existsSync(path.dirname(appResourcesDb)) === true) {
-      数据库目标路径组.push(appResourcesDb)
+    if (macApp名 !== '') {
+      let appResourcesDb = path.join(生成目录, macApp名, 'Contents/Resources/app/db')
+      if (fs.existsSync(path.dirname(appResourcesDb)) === true) {
+        数据库目标路径组.push(appResourcesDb)
+      }
     }
     for (let 目标目录 of 数据库目标路径组) {
       确保目录存在(目标目录)
@@ -149,35 +166,40 @@ async function 执行构建(): Promise<void> {
           console.error(`❌ 引导器 run.exe 编译失败:`, error)
         }
       }
-    } else {
+    } else if (macApp名 !== '') {
       // 在 macOS 下为 .app 包挂载内置启动引导器，解决 Finder 直接双击时 launchd 不传 ENV_FILE_PATH 与 cwd=/ 的问题
-      let macOsBinDir = path.join(生成目录, 'lsby-playground-ts-service.app/Contents/MacOS')
-      let 原生可执行文件 = path.join(macOsBinDir, 'lsby-playground-ts-service')
-      let 真实二进制文件 = path.join(macOsBinDir, 'lsby-playground-ts-service-bin')
+      let macOsBinDir = path.join(生成目录, macApp名, 'Contents/MacOS')
+      if (fs.existsSync(macOsBinDir) === true) {
+        let 可执行文件列表 = fs.readdirSync(macOsBinDir).filter((文件) => 文件.endsWith('-bin') === false)
+        let 主可执行文件名 = 可执行文件列表[0]
+        if (主可执行文件名 !== undefined) {
+          let 原生可执行文件 = path.join(macOsBinDir, 主可执行文件名)
+          let 真实二进制文件名 = `${主可执行文件名}-bin`
+          let 真实二进制文件 = path.join(macOsBinDir, 真实二进制文件名)
 
-      if (fs.existsSync(原生可执行文件) === true) {
-        if (fs.existsSync(真实二进制文件) === true) {
-          fs.rmSync(真实二进制文件)
+          if (fs.existsSync(真实二进制文件) === true) {
+            fs.rmSync(真实二进制文件)
+          }
+          fs.renameSync(原生可执行文件, 真实二进制文件)
+
+          let appLauncher脚本 = [
+            '#!/usr/bin/env bash',
+            'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"',
+            'APP_RESOURCES_DIR="$( cd "$DIR/../Resources/app" >/dev/null 2>&1 && pwd )"',
+            'if [ -f "$APP_RESOURCES_DIR/.env/.env.production.electron" ]; then',
+            '  export ENV_FILE_PATH="$APP_RESOURCES_DIR/.env/.env.production.electron"',
+            '  cd "$APP_RESOURCES_DIR"',
+            'elif [ -f "$DIR/../../.env/.env.production.electron" ]; then',
+            '  OUTER_ENV="$( cd "$DIR/../../.env" >/dev/null 2>&1 && pwd )"',
+            '  export ENV_FILE_PATH="$OUTER_ENV/.env.production.electron"',
+            '  cd "$DIR/../../"',
+            'fi',
+            'export DEBUG="@lsby:*,@lsby:playground-ts-service:*"',
+            `exec "$DIR/${真实二进制文件名}" "$@"`,
+          ].join('\n')
+          fs.writeFileSync(原生可执行文件, appLauncher脚本, { encoding: 'utf8', mode: 0o755 })
+          console.log(`✅ 已为 ${macApp名} 成功注入内置启动引导器`)
         }
-        fs.renameSync(原生可执行文件, 真实二进制文件)
-
-        let appLauncher脚本 = [
-          '#!/usr/bin/env bash',
-          'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"',
-          'APP_RESOURCES_DIR="$( cd "$DIR/../Resources/app" >/dev/null 2>&1 && pwd )"',
-          'if [ -f "$APP_RESOURCES_DIR/.env/.env.production.electron" ]; then',
-          '  export ENV_FILE_PATH="$APP_RESOURCES_DIR/.env/.env.production.electron"',
-          '  cd "$APP_RESOURCES_DIR"',
-          'elif [ -f "$DIR/../../.env/.env.production.electron" ]; then',
-          '  OUTER_ENV="$( cd "$DIR/../../.env" >/dev/null 2>&1 && pwd )"',
-          '  export ENV_FILE_PATH="$OUTER_ENV/.env.production.electron"',
-          '  cd "$DIR/../../"',
-          'fi',
-          'export DEBUG="@lsby:*,@lsby:playground-ts-service:*"',
-          'exec "$DIR/lsby-playground-ts-service-bin" "$@"',
-        ].join('\n')
-        fs.writeFileSync(原生可执行文件, appLauncher脚本, { encoding: 'utf8', mode: 0o755 })
-        console.log(`✅ 已为 .app 成功注入内置启动引导器`)
       }
     }
 
