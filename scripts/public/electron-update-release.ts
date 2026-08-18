@@ -43,7 +43,6 @@ export async function 写入AppPackageJson(项目根目录: string, 便携包目
         ...(源包信息.repository === undefined ? {} : { repository: 源包信息.repository }),
       },
       null,
-      2,
     ) + '\n',
     'utf8',
   )

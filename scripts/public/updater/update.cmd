@@ -9,3 +9,4 @@ if %UPDATE_EXIT_CODE% neq 0 (
 )
 pause
 exit /b %UPDATE_EXIT_CODE%
+

@@ -189,7 +189,7 @@ async function 执行构建(): Promise<void> {
 
     if (process.platform === 'win32') {
       let 更新脚本源目录 = path.join(__当前目录名, 'updater')
-      for (let 文件名 of ['lsby-playground-ts-service-debug.cmd', 'update.cmd']) {
+      for (let 文件名 of ['template-sync-debug.cmd', 'update.cmd']) {
         let 源路径 = path.join(更新脚本源目录, 文件名)
         let 目标路径 = path.join(生成目录, 文件名)
         fs.copyFileSync(源路径, 目标路径)
@@ -203,7 +203,7 @@ async function 执行构建(): Promise<void> {
 
       let Prisma迁移名称组 = 获得Prisma迁移名称组(path.join(生成目录, 'app/prisma/migrations'))
       if (Prisma迁移名称组.length > 0) {
-        let Electron程序路径 = path.join(生成目录, 'app/lsby-playground-ts-service.exe')
+        let Electron程序路径 = path.join(生成目录, 'app/template-sync.exe')
         let PrismaCli路径 = path.join(生成目录, 'app/resources/app/node_modules/prisma/build/index.js')
         let Prisma配置路径 = path.join(生成目录, 'app/prisma.config.ts')
         let Prisma环境 = {
@@ -223,14 +223,14 @@ async function 执行构建(): Promise<void> {
       // 生成 start.exe (C# 引导器)
       let cscPath = 寻找内置Csc编译器()
       let launcher源文件 = path.join(__当前目录名, 'launcher', 'launcher.cs')
-      let runExe路径 = path.join(生成目录, 'lsby-playground-ts-service-start.exe')
+      let runExe路径 = path.join(生成目录, 'template-sync-start.exe')
 
       if (cscPath === null || fs.existsSync(cscPath) === false) {
-        console.warn(`⚠️ 未找到 C# 编译器，跳过 lsby-playground-ts-service-start.exe 的编译。`)
+        console.warn(`⚠️ 未找到 C# 编译器，跳过 template-sync-start.exe 的编译。`)
       } else if (fs.existsSync(launcher源文件) === false) {
-        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 lsby-playground-ts-service-start.exe 的编译。`)
+        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 template-sync-start.exe 的编译。`)
       } else {
-        console.log('✅ 正在编译引导器 lsby-playground-ts-service-start.exe ...')
+        console.log('✅ 正在编译引导器 template-sync-start.exe ...')
         try {
           // 使用 /target:exe 避免控制台流异常
           execSync(
@@ -277,7 +277,7 @@ async function 执行构建(): Promise<void> {
             '  export ENV_FILE_PATH="$OUTER_ENV/.env.production.electron"',
             '  cd "$DIR/../../"',
             'fi',
-            'export DEBUG="@lsby:*,@lsby:playground-ts-service:*"',
+            'export DEBUG="@lsby:*,@lsby:template-sync:*"',
             `exec "$DIR/${真实二进制文件名}" "$@"`,
           ].join('\n')
           fs.writeFileSync(原生可执行文件, appLauncher脚本, { encoding: 'utf8', mode: 0o755 })
