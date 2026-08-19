@@ -36,23 +36,23 @@ Template Sync 采用安全、无损、零侵入的分析策略：
 
 ```bash
 # 1. 首次使用：设置全局默认模板仓库路径（及可选默认分支）
-template-sync set-template /path/to/template-repo [分支名]
+lsby-template-sync set-template /path/to/template-repo [分支名]
 
 # 2. 查看当前全局配置
-template-sync config
+lsby-template-sync config
 
 # 3. 日常使用：在基于该模板的项目目录下直接一键同步
 cd /path/to/project-repo
-template-sync
+lsby-template-sync
 
 # 4. 一键同步并自动合并到当前分支
-template-sync --merge
+lsby-template-sync --merge
 ```
 
 ### 命令行选项
 
 ```bash
-template-sync [项目路径] [模板路径] [选项]
+lsby-template-sync [项目路径] [模板路径] [选项]
 ```
 
 | 选项                | 简写 | 说明                                                 |
