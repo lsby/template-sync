@@ -32,7 +32,7 @@ let 主程序 = (): void => {
     console.log(`\n🚀 开始发布流程: v${版本号}...\n`)
 
     // 步骤 1: 生成 meta 信息与接口定义
-    执行命令('cross-env DEBUG=@lsby:*,@lsby:playground-ts-app:* npm run _gen:all', '生成代码与接口定义')
+    执行命令('cross-env DEBUG=@lsby:*,@lsby:template-sync:* npm run _gen:all', '生成代码与接口定义')
 
     // 步骤 2: 代码与类型检查
     执行命令('dotenv -e ./.env/.env.production.web -- npm run _check:all', '代码与类型检查')
