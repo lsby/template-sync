@@ -55,14 +55,14 @@ function 打印帮助(): void {
 ${样式.粗体(样式.高亮('Template Sync CLI'))} - 找回项目与模板丢失的共同历史，一键生成并同步本地模板分支。
 
 ${样式.粗体('常用命令:')}
-  ${样式.青色('template-sync')}                      一键极速同步当前项目（自动读取默认模板配置）
-  ${样式.青色('template-sync sync')}                 同上，在当前项目仓库中执行同步
-  ${样式.青色('template-sync set-template <路径>')}  设置全局默认模板仓库路径
-  ${样式.青色('template-sync config')}               查看当前全局配置
+  ${样式.青色('lsby-template-sync')}                      一键极速同步当前项目（自动读取默认模板配置）
+  ${样式.青色('lsby-template-sync sync')}                 同上，在当前项目仓库中执行同步
+  ${样式.青色('lsby-template-sync set-template <路径>')}  设置全局默认模板仓库路径
+  ${样式.青色('lsby-template-sync config')}               查看当前全局配置
 
 ${样式.粗体('传参同步:')}
-  ${样式.青色('template-sync')} [选项]
-  ${样式.青色('template-sync')} <项目路径> <模板路径> [选项]
+  ${样式.青色('lsby-template-sync')} [选项]
+  ${样式.青色('lsby-template-sync')} <项目路径> <模板路径> [选项]
 
 ${样式.粗体('选项:')}
   ${样式.黄色('-p, --project <路径>')}     项目仓库路径 (默认: 当前工作目录)
@@ -78,14 +78,14 @@ ${样式.粗体('选项:')}
 
 ${样式.粗体('常见工作流示例:')}
   ${样式.灰色('# 1. 首次使用：设置一次默认模板仓库路径')}
-  template-sync set-template /Users/user/project/my-template
+  lsby-template-sync set-template /Users/user/project/my-template
 
   ${样式.灰色('# 2. 日常使用：在任意基于该模板的项目目录下直接一键同步')}
   cd /Users/user/project/my-app
-  template-sync
+  lsby-template-sync
 
   ${样式.灰色('# 3. 一键同步并自动合并')}
-  template-sync --merge
+  lsby-template-sync --merge
 `)
 }
 
@@ -184,7 +184,7 @@ async function 处理配置命令(子命令: string, 参数列表: string[]): Pr
       } else {
         console.log(`  ${样式.粗体('可用分支')}: ${分支组.join(', ')}`)
       }
-      console.log(`\n现在您可以在任意项目目录下直接运行 ${样式.青色('template-sync')} 一键完成同步。\n`)
+      console.log(`\n现在您可以在任意项目目录下直接运行 ${样式.青色('lsby-template-sync')} 一键完成同步。\n`)
       return
     }
     case 'config':
@@ -195,7 +195,7 @@ async function 处理配置命令(子命令: string, 参数列表: string[]): Pr
       console.log(`  ${样式.粗体('默认模板路径')}: ${配置.默认模板路径 ?? 样式.灰色('(未设置)')}`)
       console.log(`  ${样式.粗体('默认模板分支')}: ${配置.默认模板分支 ?? 样式.灰色('(未设置，将自动探测)')}\n`)
       if (配置.默认模板路径 === undefined) {
-        console.log(`提示: 可通过 ${样式.青色('template-sync set-template <路径>')} 设置默认模板仓库。\n`)
+        console.log(`提示: 可通过 ${样式.青色('lsby-template-sync set-template <路径>')} 设置默认模板仓库。\n`)
       }
       return
     }
