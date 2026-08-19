@@ -1,7 +1,6 @@
 {
   "name": "@lsby/template-sync",
   "version": "0.1.5",
-  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/lsby/template-sync.git"
@@ -13,7 +12,7 @@
     "./src/global/env-provider.ts": "./src/web/mock/env-provider-mock.ts"
   },
   "bin": {
-    "template-sync": "dist/src/cli.js"
+    "lsby-template-sync": "dist/src/cli.js"
   },
   "files": [
     "dist"
