@@ -1,6 +1,8 @@
 import { execFile, spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
+import { 规范化并解析路径 } from './path-service'
 import type { 仓库分析参数, 仓库分析结果, 创建嫁接参数, 嫁接结果, 提交信息 } from './types'
 
 let execFileAsync = promisify(execFile)
@@ -17,6 +19,10 @@ function 清理输出(value: string): string {
 }
 
 async function 执行Git(工作目录: string, 参数: string[], 选项: Git执行选项 = {}): Promise<Git执行结果> {
+  if (existsSync(工作目录) === false) {
+    throw new Error(`目录不存在：${工作目录}`)
+  }
+
   let env = { ...process.env }
   if (选项.禁用替换 === true) env['GIT_NO_REPLACE_OBJECTS'] = '1'
 
@@ -31,7 +37,12 @@ async function 执行Git(工作目录: string, 参数: string[], 选项: Git执�
     return { stdout: 清理输出(result.stdout), stderr: 清理输出(result.stderr), 退出码: 0 }
   } catch (error) {
     let gitError = error as NodeJS.ErrnoException & { stdout?: string; stderr?: string; code?: string | number }
-    if (gitError.code === 'ENOENT') throw new Error('未找到 Git，请先安装 Git 并确保 git 命令可用')
+    if (gitError.code === 'ENOENT') {
+      if (existsSync(工作目录) === false) {
+        throw new Error(`目录不存在：${工作目录}`)
+      }
+      throw new Error('未找到 Git，请先安装 Git 并确保 git 命令可用')
+    }
 
     let result = {
       stdout: 清理输出(gitError.stdout ?? ''),
@@ -74,9 +85,11 @@ async function 执行Git并输入(工作目录: string, 参数: string[], 输入
 }
 
 async function 验证仓库(仓库路径: string, 名称: string): Promise<void> {
-  if (path.resolve(仓库路径) === '') throw new Error(`请选择${名称}目录`)
-  let result = await 执行Git(仓库路径, ['rev-parse', '--is-inside-work-tree'], { 允许失败: true })
-  if (result.退出码 !== 0 || result.stdout !== 'true') throw new Error(`${名称}不是有效的 Git 工作区：${仓库路径}`)
+  let 绝对路径 = path.resolve(仓库路径)
+  if (绝对路径 === '') throw new Error(`请选择${名称}目录`)
+  if (existsSync(绝对路径) === false) throw new Error(`${名称}目录不存在：${绝对路径}`)
+  let result = await 执行Git(绝对路径, ['rev-parse', '--is-inside-work-tree'], { 允许失败: true })
+  if (result.退出码 !== 0 || result.stdout !== 'true') throw new Error(`${名称}不是有效的 Git 工作区：${绝对路径}`)
 }
 
 async function 工作区是否干净(仓库路径: string): Promise<boolean> {
@@ -139,8 +152,9 @@ async function 找到边界提交(模板路径: string, 模板分支: string, �
 }
 
 export async function 列出模板分支(模板路径: string): Promise<string[]> {
-  await 验证仓库(模板路径, '模板')
-  let result = await 执行Git(模板路径, ['for-each-ref', '--format=%(refname:short)', 'refs/heads'])
+  let 实际路径 = 规范化并解析路径(模板路径).路径
+  await 验证仓库(实际路径, '模板')
+  let result = await 执行Git(实际路径, ['for-each-ref', '--format=%(refname:short)', 'refs/heads'])
   let branches = result.stdout.split('\n').filter((item) => item !== '')
   if (branches.length === 0) throw new Error('模板仓库没有本地分支')
   return branches
@@ -150,8 +164,8 @@ export async function 分析仓库(参数: 仓库分析参数): Promise<仓库�
   if (参数.项目路径.trim() === '') throw new Error('请选择项目目录')
   if (参数.模板路径.trim() === '') throw new Error('请选择模板目录')
   if (参数.模板分支.trim() === '') throw new Error('请选择模板分支')
-  let 项目路径 = path.resolve(参数.项目路径)
-  let 模板路径 = path.resolve(参数.模板路径)
+  let 项目路径 = 规范化并解析路径(参数.项目路径).路径
+  let 模板路径 = 规范化并解析路径(参数.模板路径).路径
   if (项目路径 === 模板路径) throw new Error('项目仓库和模板仓库不能是同一个目录')
 
   await 验证仓库(项目路径, '项目')

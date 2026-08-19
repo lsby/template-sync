@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import inquirer from 'inquirer'
 import { execFile } from 'node:child_process'
-import path from 'node:path'
 import process from 'node:process'
 import { parseArgs, promisify } from 'node:util'
 import { version } from './app/meta-info'
@@ -13,6 +12,7 @@ import {
   读取用户配置,
 } from './template-sync/config-service'
 import { 分析仓库, 列出模板分支, 创建嫁接 } from './template-sync/git-service'
+import { 规范化并解析路径 } from './template-sync/path-service'
 import type { 仓库分析参数, 仓库分析结果, 创建嫁接参数, 嫁接结果, 提交信息 } from './template-sync/types'
 
 let execFileAsync = promisify(execFile)
@@ -168,7 +168,12 @@ async function 处理配置命令(子命令: string, 参数列表: string[]): Pr
         目标路径 = 输入.路径
       }
 
-      let 绝对路径 = path.resolve(目标路径.trim())
+      let 路径解析结果 = 规范化并解析路径(目标路径)
+      let 绝对路径 = 路径解析结果.路径
+      if (路径解析结果.是否自动纠正 === true) {
+        console.log(样式.黄色(`💡 检测到终端转义导致路径缺失斜杠，已自动识别并纠正为: ${绝对路径}`))
+      }
+
       console.log(样式.灰色(`正在验证模板仓库: ${绝对路径} ...`))
       let 分支组 = await 列出模板分支(绝对路径)
       设置默认模板路径(绝对路径)
@@ -225,7 +230,7 @@ async function 交互式向导流程(初始参数: {
       validate: (input: string): boolean | string => (input.trim() === '' ? '项目路径不能为空' : true),
     },
   ])
-  let 项目路径 = path.resolve(项目问答.项目路径.trim())
+  let 项目路径 = 规范化并解析路径(项目问答.项目路径.trim()).路径
 
   // 2. 模板路径
   let 配置模板路径 = 获取默认模板路径()
@@ -240,7 +245,7 @@ async function 交互式向导流程(初始参数: {
       validate: (input: string): boolean | string => (input.trim() === '' ? '模板路径不能为空' : true),
     },
   ])
-  let 模板路径 = path.resolve(模板问答.模板路径.trim())
+  let 模板路径 = 规范化并解析路径(模板问答.模板路径.trim()).路径
 
   // 如果用户未设置全局模板路径，提示是否保存为默认
   if (配置模板路径 === undefined) {
@@ -456,10 +461,12 @@ async function 主入口(): Promise<void> {
   // 获取默认配置
   let 配置模板路径 = 获取默认模板路径()
   let 实际模板路径 =
-    模板路径参数 !== undefined && 模板路径参数.trim() !== '' ? path.resolve(模板路径参数.trim()) : 配置模板路径
+    模板路径参数 !== undefined && 模板路径参数.trim() !== '' ? 规范化并解析路径(模板路径参数.trim()).路径 : 配置模板路径
 
   let 实际项目路径 =
-    项目路径参数 !== undefined && 项目路径参数.trim() !== '' ? path.resolve(项目路径参数.trim()) : process.cwd()
+    项目路径参数 !== undefined && 项目路径参数.trim() !== ''
+      ? 规范化并解析路径(项目路径参数.trim()).路径
+      : process.cwd()
 
   // 如果显式指定交互，或者既没有传模板路径也没有全局配置
   if (显式指定交互 === true || 实际模板路径 === undefined) {
