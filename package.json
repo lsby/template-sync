@@ -191,7 +191,7 @@
     "npmRebuild": false,
     "appId": "lsby.template-sync",
     "productName": "template-sync",
-    "executableName": "template-sync",
+    "executableName": "lsby-template-sync",
     "asar": false,
     "files": [
       "dist/**/*",
