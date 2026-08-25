@@ -208,7 +208,7 @@ async function 执行构建(): Promise<void> {
 
       let Prisma迁移名称组 = 获得Prisma迁移名称组(path.join(生成目录, 'app/prisma/migrations'))
       if (Prisma迁移名称组.length > 0) {
-        let Electron程序路径 = path.join(生成目录, 'app/template-sync.exe')
+        let Electron程序路径 = path.join(生成目录, 'app/lsby-template-sync.exe')
         let PrismaCli路径 = path.join(生成目录, 'app/resources/app/node_modules/prisma/build/index.js')
         let Prisma配置路径 = path.join(生成目录, 'app/prisma.config.ts')
         let Prisma环境 = {
@@ -228,14 +228,14 @@ async function 执行构建(): Promise<void> {
       // 生成 start.exe (C# 引导器)
       let cscPath = 寻找内置Csc编译器()
       let launcher源文件 = path.join(__当前目录名, 'launcher', 'launcher.cs')
-      let runExe路径 = path.join(生成目录, 'template-sync.exe')
+      let runExe路径 = path.join(生成目录, 'lsby-template-sync.exe')
 
       if (cscPath === null || fs.existsSync(cscPath) === false) {
-        console.warn(`⚠️ 未找到 C# 编译器，跳过 template-sync.exe 的编译。`)
+        console.warn(`⚠️ 未找到 C# 编译器，跳过 lsby-template-sync.exe 的编译。`)
       } else if (fs.existsSync(launcher源文件) === false) {
-        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 template-sync.exe 的编译。`)
+        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 lsby-template-sync.exe 的编译。`)
       } else {
-        console.log('✅ 正在编译引导器 template-sync.exe ...')
+        console.log('✅ 正在编译引导器 lsby-template-sync.exe ...')
         try {
           // 使用 /target:exe 避免控制台流异常
           execSync(

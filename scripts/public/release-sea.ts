@@ -93,7 +93,7 @@ async function 执行构建(): Promise<void> {
 
     console.log('[5/9] 正在准备可执行文件...')
     let Node可执行文件 = process.execPath
-    let 可执行文件名 = process.platform === 'win32' ? 'template-sync.exe' : 'template-sync'
+    let 可执行文件名 = process.platform === 'win32' ? 'lsby-template-sync.exe' : 'template-sync'
     let 目标可执行文件 = path.join(发布目录, 可执行文件名)
     fs.copyFileSync(Node可执行文件, 目标可执行文件)
 
@@ -164,7 +164,7 @@ async function 执行构建(): Promise<void> {
         'cd /d "%~dp0"',
         'set "ENV_FILE_PATH=./.env/.env.production.sea"',
         'set "DEBUG=@lsby:*,@lsby:template-sync:*"',
-        'template-sync.exe',
+        'lsby-template-sync.exe',
         'if errorlevel 1 (',
         '  echo.',
         '  echo Application exited with error. Press any key to close...',
@@ -179,14 +179,14 @@ async function 执行构建(): Promise<void> {
       // 生成 start.exe (C# 引导器)
       let cscPath = 寻找内置Csc编译器()
       let launcher源文件 = path.join(__当前目录名, 'launcher', 'launcher.cs')
-      let runExe路径 = path.join(发布目录, 'template-sync.exe')
+      let runExe路径 = path.join(发布目录, 'lsby-template-sync.exe')
 
       if (cscPath === null || fs.existsSync(cscPath) === false) {
-        console.warn(`⚠️ 未找到 C# 编译器，跳过 template-sync.exe 的编译。`)
+        console.warn(`⚠️ 未找到 C# 编译器，跳过 lsby-template-sync.exe 的编译。`)
       } else if (fs.existsSync(launcher源文件) === false) {
-        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 template-sync.exe 的编译。`)
+        console.warn(`⚠️ 未找到引导器源码: ${launcher源文件}，跳过 lsby-template-sync.exe 的编译。`)
       } else {
-        console.log('✅ 正在编译引导器 template-sync.exe ...')
+        console.log('✅ 正在编译引导器 lsby-template-sync.exe ...')
         try {
           // 使用 /target:exe 避免控制台流异常
           execSync(

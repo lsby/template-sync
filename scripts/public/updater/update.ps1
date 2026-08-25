@@ -22,7 +22,7 @@ $PreviousRootManifestPath = Join-Path $WorkDir 'previous-root-entries.json'
 $DbBackupDir = Join-Path $WorkDir 'db.backup'
 $MarkerPath = Join-Path $DataDir 'update-in-progress'
 $PackagePath = Join-Path $AppDir 'package.json'
-$AppExeName = 'template-sync.exe'
+$AppExeName = 'lsby-template-sync.exe'
 $AppProcessName = 'template-sync'
 $script:DownloadSha256 = $ExpectedSha256
 $script:ResolvedGitHubToken = if ($GitHubToken -ne '') { $GitHubToken } else { [string]$env:GITHUB_TOKEN }
@@ -209,7 +209,7 @@ function Expand-ValidatedZip([string]$ZipPath) {
   } finally {
     $archive.Dispose()
   }
-  foreach ($requiredPath in @('app\package.json', "app\$AppExeName", 'app\.env\.env.production.electron', 'update.cmd', 'scripts\update.ps1', 'template-sync.exe')) {
+  foreach ($requiredPath in @('app\package.json', "app\$AppExeName", 'app\.env\.env.production.electron', 'update.cmd', 'scripts\update.ps1', 'lsby-template-sync.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $StagingDir $requiredPath) -PathType Leaf)) { throw "ZIP 缺少 $requiredPath" }
   }
   $stagedAppDir = Join-Path $StagingDir 'app'
@@ -361,7 +361,7 @@ try {
   Remove-Item -LiteralPath $MarkerPath -Force
   Remove-SafePath $StagingDir
   Remove-SafePath $WorkDir
-  Write-Host '更新成功。现在可以运行 template-sync.exe 启动新版本。'
+  Write-Host '更新成功。现在可以运行 lsby-template-sync.exe 启动新版本。'
   exit 0
 } catch {
   Write-Host "更新失败: $($_.Exception.Message)" -ForegroundColor Red

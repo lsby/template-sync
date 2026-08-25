@@ -29,7 +29,7 @@ namespace LsbyLauncher
             Application.SetCompatibleTextRenderingDefault(false);
 
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string appPath = Path.Combine(baseDir, "app", "template-sync.exe");
+            string appPath = Path.Combine(baseDir, "app", "lsby-template-sync.exe");
             string markerPath = Path.Combine(baseDir, "data", "update-in-progress");
             IntPtr consoleWindow = GetConsoleWindow();
             ShowWindow(consoleWindow, SW_HIDE);
@@ -143,7 +143,7 @@ namespace LsbyLauncher
             {
                 ShowWindow(consoleWindow, SW_SHOW);
                 Console.WriteLine("\n[引导器错误] 启动失败: " + ex.Message);
-                Console.WriteLine("确保 app/template-sync.exe 存在。");
+                Console.WriteLine("确保 app/lsby-template-sync.exe 存在。");
                 Console.WriteLine("按任意键关闭...");
                 Console.ReadKey();
                 trayIcon.Visible = false;
