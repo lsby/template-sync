@@ -208,17 +208,13 @@ async function 执行构建(): Promise<void> {
 
       let Prisma迁移名称组 = 获得Prisma迁移名称组(path.join(生成目录, 'app/prisma/migrations'))
       if (Prisma迁移名称组.length > 0) {
-        let Electron程序路径 = path.join(生成目录, 'app/lsby-template-sync.exe')
-        let PrismaCli路径 = path.join(生成目录, 'app/resources/app/node_modules/prisma/build/index.js')
-        let Prisma配置路径 = path.join(生成目录, 'app/prisma.config.ts')
+        let PushProdCli路径 = path.join(生成目录, 'app/resources/app/dist/scripts/db/push-prod.js')
         let Prisma环境 = {
           ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
           DB_PATH_PRISMA: `file:${path.join(生成目录, 'data/db/prod-electron.db').replaceAll('\\', '/')}`,
-          NODE_PATH: path.join(生成目录, 'app/resources/app/node_modules'),
         }
-        console.log('正在验证默认数据库的 Prisma migrations...')
-        execFileSync(Electron程序路径, [PrismaCli路径, 'migrate', 'deploy', '--config', Prisma配置路径], {
+        console.log('正在验证默认数据库的原生 SQL migrations...')
+        execFileSync(process.execPath, [PushProdCli路径], {
           cwd: path.join(生成目录, 'app'),
           env: Prisma环境,
           stdio: 'inherit',

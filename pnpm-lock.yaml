@@ -91,9 +91,6 @@ importers:
       open:
         specifier: ^11.0.0
         version: 11.0.0
-      prisma:
-        specifier: ^7.2.0
-        version: 7.2.0(@types/react@19.2.7)(magicast@0.3.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
       zod:
         specifier: 3.24.2
         version: 3.24.2
@@ -209,6 +206,9 @@ importers:
       prettier-plugin-packagejson:
         specifier: ^2.5.20
         version: 2.5.20(prettier@3.7.4)
+      prisma:
+        specifier: 7.2.0
+        version: 7.2.0(@types/react@19.2.7)(magicast@0.3.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
       prisma-kysely:
         specifier: ^1.8.0
         version: 1.8.0(encoding@0.1.13)
@@ -3418,10 +3418,6 @@ packages:
   foreground-child@3.3.1:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
-
-  form-data@4.0.4:
-    resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
-    engines: {node: '>= 6'}
 
   form-data@4.0.6:
     resolution: {integrity: sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==}
@@ -8704,7 +8700,7 @@ snapshots:
       js-yaml: 4.1.1
       json5: 2.2.3
       lazy-val: 1.0.5
-      minimatch: 10.0.3
+      minimatch: 10.2.6
       plist: 3.1.0
       resedit: 1.7.2
       semver: 7.7.3
@@ -9606,7 +9602,7 @@ snapshots:
       builder-util: 26.0.11
       builder-util-runtime: 9.3.1
       chalk: 4.1.2
-      form-data: 4.0.4
+      form-data: 4.0.6
       fs-extra: 10.1.0
       lazy-val: 1.0.5
       mime: 2.6.0
@@ -10091,14 +10087,6 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
-
-  form-data@4.0.4:
-    dependencies:
-      asynckit: 0.4.0
-      combined-stream: 1.0.8
-      es-set-tostringtag: 2.1.0
-      hasown: 2.0.2
-      mime-types: 2.1.35
 
   form-data@4.0.6:
     dependencies:
