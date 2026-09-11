@@ -173,7 +173,6 @@ export async function 分析仓库(参数: 仓库分析参数): Promise<仓库�
 
   let [项目工作区干净, 模板工作区干净] = await Promise.all([工作区是否干净(项目路径), 工作区是否干净(模板路径)])
   if (项目工作区干净 === false) throw new Error('项目工作区不干净，请先提交、暂存或清理改动')
-  if (模板工作区干净 === false) throw new Error('模板工作区不干净，请先提交、暂存或清理改动')
 
   await 执行Git(模板路径, ['rev-parse', '--verify', `${参数.模板分支}^{commit}`])
   let 项目起点 = await 找到项目起点(项目路径)
