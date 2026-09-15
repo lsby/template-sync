@@ -32,6 +32,14 @@ Template Sync 采用安全、无损、零侵入的分析策略：
 
 ## 命令行工具 (CLI)
 
+### 安装
+
+```bash
+npm install -g @lsby/template-sync
+# 或使用 pnpm
+pnpm add -g @lsby/template-sync
+```
+
 ### 常用命令与配置
 
 ```bash
