@@ -93,21 +93,23 @@ async function 执行打包(): Promise<void> {
   // 根据用户输入生成 Docker 构建命令
   let docker文件路径 = path.join('deploy', 回答.选择环境, 'dockerfile')
   let 项目根目录 = path.resolve(import.meta.dirname, '../..')
-  console.log('执行命令: %O %O', 'docker', [
+  let 环境文件名表 = { development: '.env/.env.development.web', production: '.env/.env.production.web' }
+  let 环境文件路径 = path.resolve(项目根目录, 环境文件名表[回答.选择环境])
+  if (fs.existsSync(环境文件路径) === false) throw new Error(`缺少 Docker 构建环境文件: ${环境文件路径}`)
+  let 构建参数 = [
     'build',
+    '--secret',
+    `id=app_env,src=${环境文件路径}`,
     '-t',
     `${回答.用户输入镜像名}:${包信息.version}`,
     '-f',
     docker文件路径,
     '.',
-  ])
+  ]
+  console.log('执行命令: %O %O', 'docker', 构建参数)
 
   try {
-    let 退出码 = await 执行命令行(
-      'docker',
-      ['build', '-t', `${回答.用户输入镜像名}:${包信息.version}`, '-f', docker文件路径, '.'],
-      项目根目录,
-    )
+    let 退出码 = await 执行命令行('docker', 构建参数, 项目根目录)
     console.log(`docker build 进程退出，退出码: ${退出码}`)
 
     if (退出码 === 0 && 回答.是否推送 === true && 回答.目标仓库 !== undefined) {

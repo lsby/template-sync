@@ -1,8 +1,12 @@
 import { web请求 } from '@lsby/ts-http-extend'
+import { z } from 'zod'
 import { 环境变量 } from '../../../global/env'
 import { 已审阅的any } from '../../../tools/types'
 import { InterfaceType } from '../../../types/interface-type'
 import { 错误提示 } from '../manager/toast-manager'
+import { 是中止错误, 等待可取消任务 } from '../tools/abort'
+
+export type API请求选项 = { 信号?: AbortSignal }
 
 export type 取接口<
   P extends InterfaceType[number]['path'],
@@ -11,6 +15,7 @@ export type 取接口<
 
 type 取JSON输入<I> = I extends { input: { json: infer 输入 } } ? 输入 : never
 type 取FORM输入<I> = I extends { input: { form: infer 输入 } } ? 输入 : never
+type 取QUERY输入<I> = I extends { input: { query: infer 输入 } } ? 输入 : never
 
 type 取http错误输出<I> = I extends { errorOutput: infer 输出 } ? 输出 : never
 type 取http正确输出<I> = I extends { successOutput: infer 输出 } ? 输出 : never
@@ -31,9 +36,51 @@ type 所有FORM路径 = InterfaceType extends readonly (infer Item)[]
     ? P
     : never
   : never
+type 所有GET文本路径 = InterfaceType extends readonly (infer Item)[]
+  ? Item extends { method: 'get'; path: infer P; errorOutput: string; successOutput: string }
+    ? P
+    : never
+  : never
+type GET查询参数组<接口路径 extends 所有GET文本路径> = [取QUERY输入<取接口<接口路径>>] extends [never]
+  ? []
+  : [参数: 取QUERY输入<取接口<接口路径>>]
 
 let API前缀 = ''
 let serviceWorkerReady: Promise<void> | undefined
+
+function 脱敏请求头(头: Record<string, string>): Record<string, string> {
+  let 结果: Record<string, string> = {}
+  for (let [键, 值] of Object.entries(头)) {
+    let 小写键 = 键.toLowerCase()
+    结果[键] = 小写键 === 'authorization' || 小写键 === 'cookie' ? '[已隐藏]' : 值
+  }
+  return 结果
+}
+
+function 获得请求体摘要(请求体: string | FormData): Record<string, string | number> {
+  if (请求体 instanceof FormData) return { 类型: 'FormData', 字段数量: [...请求体.keys()].length }
+  return { 类型: '文本', 字符数量: 请求体.length }
+}
+
+function 获得错误摘要(错误: unknown): Record<string, string> {
+  return { 类型: 错误 instanceof Error ? 错误.name : typeof 错误 }
+}
+
+let 接口响应模式 = z.object({ status: z.enum(['success', 'fail', 'unexpected']), data: z.unknown() })
+
+function 解析接口响应(值: unknown): { status: 'success' | 'fail' | 'unexpected'; data: unknown } {
+  if (typeof 值 !== 'object' || 值 === null || Object.hasOwn(值, 'data') === false) {
+    throw new Error('接口响应缺少必要的 data 字段')
+  }
+  let 响应 = 接口响应模式.parse(值)
+  if (
+    响应.status === 'success' &&
+    (typeof 响应.data !== 'object' || 响应.data === null || Array.isArray(响应.data) === true)
+  ) {
+    throw new Error('接口成功响应的 data 必须是对象')
+  }
+  return { status: 响应.status, data: 响应.data }
+}
 
 export class API管理器类 {
   private 本地存储名称 = 'lsby-api-component-base-token'
@@ -55,16 +102,51 @@ export class API管理器类 {
     localStorage.removeItem(this.本地存储名称)
   }
 
+  public async 请求get文本<接口路径 extends 所有GET文本路径>(
+    接口路径: 接口路径,
+    ...参数组: GET查询参数组<接口路径>
+  ): Promise<
+    | { status: 'success'; data: 取http正确输出<取接口<接口路径>> }
+    | { status: 'fail'; data: 取http错误输出<取接口<接口路径>> }
+    | { status: 'unexpected'; data: string }
+  > {
+    let 查询参数 = 参数组[0]
+    let 查询字符串 = 查询参数 === undefined ? '' : new URLSearchParams(查询参数 as 已审阅的any).toString()
+    let 完整路径 = 查询字符串 === '' ? 接口路径 : `${接口路径}?${查询字符串}`
+    let 头: Record<string, string> = {}
+    if (this.token !== null) 头['authorization'] = 'Bearer ' + this.token
+
+    try {
+      if (环境变量.BUILD_TARGET === 'pure-frontend') {
+        let 响应 = await withPureFrontendDatabaseLock(() =>
+          requestPureFrontendWorkerResponse({ path: 完整路径, headers: 头, method: 'GET', body: '' }),
+        )
+        let 数据 = z.string().parse(JSON.parse(响应.body))
+        return { status: 响应.status >= 200 && 响应.status < 300 ? 'success' : 'fail', data: 数据 } as 已审阅的any
+      }
+
+      if (serviceWorkerReady !== undefined) await serviceWorkerReady
+      let 响应 = await fetch(API前缀 + 完整路径, { method: 'GET', headers: 头 })
+      return { status: 响应.ok === true ? 'success' : 'fail', data: await 响应.text() } as 已审阅的any
+    } catch (e) {
+      console.error('GET 请求错误:\n路径: %o', 完整路径)
+      return { status: 'unexpected', data: String(e) }
+    }
+  }
+
   public async 请求postJson<接口路径 extends 所有POST_JSON路径>(
     接口路径: 接口路径,
     参数: 取JSON输入<取接口<接口路径>>,
-    ws输出回调?: (data: 取ws输出<取接口<接口路径>>) => Promise<void>,
+    请求选项或ws输出回调?: API请求选项 | ((data: 取ws输出<取接口<接口路径>>) => Promise<void>),
     ws连接回调?: (发送消息: (data: 取ws输入<取接口<接口路径>>) => void, ws: WebSocket) => Promise<void>,
     ws关闭回调?: (e: CloseEvent) => Promise<void>,
     ws错误回调?: (e: Event) => Promise<void>,
+    附加请求选项?: API请求选项,
   ): Promise<
     取http错误输出<取接口<接口路径>> | 取http正确输出<取接口<接口路径>> | { status: 'unexpected'; data: string }
   > {
+    let 请求选项 = typeof 请求选项或ws输出回调 === 'function' ? 附加请求选项 : 请求选项或ws输出回调
+    let ws输出回调 = typeof 请求选项或ws输出回调 === 'function' ? 请求选项或ws输出回调 : undefined
     return (await this.通用请求(
       接口路径,
       { 'Content-Type': 'application/json' },
@@ -74,20 +156,30 @@ export class API管理器类 {
       ws连接回调,
       ws关闭回调,
       ws错误回调,
+      请求选项,
     )) as 已审阅的any
   }
   public async 请求postJson并处理错误<接口路径 extends 所有POST_JSON路径>(
     接口路径: 接口路径,
     参数: 取JSON输入<取接口<接口路径>>,
-    ws输出回调?: (data: 取ws输出<取接口<接口路径>>) => Promise<void>,
+    请求选项或ws输出回调?: API请求选项 | ((data: 取ws输出<取接口<接口路径>>) => Promise<void>),
     ws连接回调?: (发送消息: (data: 取ws输入<取接口<接口路径>>) => void, ws: WebSocket) => Promise<void>,
     ws关闭回调?: (e: CloseEvent) => Promise<void>,
     ws错误回调?: (e: Event) => Promise<void>,
+    附加请求选项?: API请求选项,
   ): Promise<取http正确输出数据<取接口<接口路径>>> {
     return (await this.通用请求并处理错误(
       接口路径,
       async () =>
-        (await this.请求postJson(接口路径, 参数, ws输出回调, ws连接回调, ws关闭回调, ws错误回调)) as 已审阅的any,
+        (await this.请求postJson(
+          接口路径,
+          参数,
+          请求选项或ws输出回调,
+          ws连接回调,
+          ws关闭回调,
+          ws错误回调,
+          附加请求选项,
+        )) as 已审阅的any,
     )) as 已审阅的any
   }
 
@@ -146,6 +238,7 @@ export class API管理器类 {
     ws连接回调?: (发送消息: (data: 已审阅的any) => void, ws: WebSocket) => Promise<void>,
     ws关闭回调?: (e: CloseEvent) => Promise<void>,
     ws错误回调?: (e: Event) => Promise<void>,
+    请求选项?: API请求选项,
   ): Promise<object | { status: 'unexpected'; data: string }> {
     let 请求结果: string | null = null
     try {
@@ -163,13 +256,23 @@ export class API管理器类 {
           : {}),
         ...(ws关闭回调 !== undefined ? { ws关闭回调: ws关闭回调 } : {}),
         ...(ws错误回调 !== undefined ? { ws错误回调: ws错误回调 } : {}),
-        ...(ws连接回调 !== undefined
+        ...(ws连接回调 !== undefined || 请求选项?.信号 !== undefined
           ? {
               ws连接回调: async (ws: WebSocket): Promise<void> => {
+                let 信号 = 请求选项?.信号
+                if (信号 !== undefined) {
+                  let 取消连接 = (): void => ws.close()
+                  if (信号.aborted === true) {
+                    取消连接()
+                    return
+                  }
+                  信号.addEventListener('abort', 取消连接, { once: true })
+                  ws.addEventListener('close', (): void => 信号.removeEventListener('abort', 取消连接), { once: true })
+                }
                 let 发送消息 = (data: 已审阅的any): void => {
                   ws.send(JSON.stringify(data))
                 }
-                await ws连接回调(发送消息, ws)
+                await ws连接回调?.(发送消息, ws)
               },
             }
           : {}),
@@ -177,23 +280,34 @@ export class API管理器类 {
 
       // console.log('请求:\n路径: %o\n头: %o\n方法: %o\nbody: %o\n结果: %o', 接口路径, 头, 方法, body, 请求结果)
       if (环境变量.BUILD_TARGET === 'pure-frontend') {
-        return await requestPureFrontendApi(接口路径, 头, 方法, body)
+        return await 等待可取消任务(requestPureFrontendApi(接口路径, 头, 方法, body), 请求选项?.信号)
       }
-      if (serviceWorkerReady !== undefined) await serviceWorkerReady
+      if (serviceWorkerReady !== undefined) await 等待可取消任务(serviceWorkerReady, 请求选项?.信号)
 
-      请求结果 = await web请求({
-        url: API前缀 + 接口路径,
-        body: body,
-        headers: 头,
-        method: 方法,
-        ws路径: '/ws',
-        wsId参数键: 'id',
-        wsId头键: 'ws-client-id',
-        ...ws回调选项,
-      })
-      return JSON.parse(请求结果)
+      请求结果 = await 等待可取消任务(
+        web请求({
+          url: API前缀 + 接口路径,
+          body: body,
+          headers: 头,
+          method: 方法,
+          ws路径: '/ws',
+          wsId参数键: 'id',
+          wsId头键: 'ws-client-id',
+          ...ws回调选项,
+        }),
+        请求选项?.信号,
+      )
+      return 解析接口响应(JSON.parse(请求结果))
     } catch (e) {
-      console.error('请求错误:\n路径: %o\n头: %o\n方法: %o\nbody: %o\n结果: %o', 接口路径, 头, 方法, body, 请求结果)
+      if (是中止错误(e, 请求选项?.信号) === true) throw e
+      console.error(
+        '请求错误:\n路径: %o\n头: %o\n方法: %o\n请求体: %o\n错误: %o',
+        接口路径,
+        脱敏请求头(头),
+        方法,
+        获得请求体摘要(body),
+        获得错误摘要(e),
+      )
       return { status: 'unexpected', data: String(e) }
     }
   }
@@ -202,7 +316,7 @@ export class API管理器类 {
     请求函数: () => Promise<object | { status: 'unexpected'; data: string }>,
   ): Promise<object> {
     let 请求结果 = await 请求函数()
-    if (this.是标准返回格式(请求结果) === false) return 请求结果
+    if (this.是标准返回格式(请求结果) === false) throw new Error(`接口响应格式错误: ${接口路径}`)
 
     if (请求结果.status === 'fail' || 请求结果.status === 'unexpected') {
       let 错误详情: string =
@@ -222,7 +336,9 @@ export class API管理器类 {
     | { status: 'fail'; data: 已审阅的any }
     | { status: 'success'; data: Record<string, 已审阅的any> }
     | { status: 'unexpected'; data: 已审阅的any } {
-    return typeof x === 'object' && x !== null && 'status' in x && 'data' in x
+    if (typeof x !== 'object' || x === null) return false
+    let obj = x as Record<string, unknown>
+    return (obj['status'] === 'success' || obj['status'] === 'fail' || obj['status'] === 'unexpected') && 'data' in obj
   }
 }
 
@@ -230,9 +346,9 @@ export let API管理器 = new API管理器类()
 
 if ('serviceWorker' in navigator && 环境变量.BUILD_TARGET === 'pure-frontend') {
   serviceWorkerReady = navigator.serviceWorker
-    .register(new URL('../../sw.ts', import.meta.url), { type: 'module' })
+    .register(new URL('../../pure-frontend/sw.ts', import.meta.url), { type: 'module' })
     .then(() => {
-      console.log('✅ ServiceWorker 注册成功')
+      console.log('ServiceWorker 注册成功')
     })
 }
 
@@ -242,7 +358,7 @@ let pureFrontendWorker: Worker | undefined
 let pureFrontendRequestId = 0
 let pureFrontendPendingRequests = new Map<
   number,
-  { resolve: (value: object | { status: 'unexpected'; data: string }) => void; reject: (reason: unknown) => void }
+  { resolve: (value: PureFrontendWorkerResponse) => void; reject: (reason: unknown) => void }
 >()
 let pureFrontendDatabaseLockName = 'lsby-pure-frontend:local.db'
 
@@ -253,7 +369,7 @@ type PureFrontendWorkerRequest =
 
 function getPureFrontendWorker(): Worker {
   if (pureFrontendWorker === undefined) {
-    pureFrontendWorker = new Worker(new URL('../../pure-frontend-api-worker.ts', import.meta.url), {
+    pureFrontendWorker = new Worker(new URL('../../pure-frontend/pure-frontend-api-worker.ts', import.meta.url), {
       type: 'module',
       name: 'lsby-pure-frontend-sqlite',
     })
@@ -261,11 +377,7 @@ function getPureFrontendWorker(): Worker {
       let pending = pureFrontendPendingRequests.get(event.data.id)
       if (pending === undefined) return
       pureFrontendPendingRequests.delete(event.data.id)
-      try {
-        pending.resolve(JSON.parse(event.data.body) as object)
-      } catch (error: unknown) {
-        pending.reject(error)
-      }
+      pending.resolve(event.data)
     })
     pureFrontendWorker.addEventListener('error', (event) => {
       for (let pending of pureFrontendPendingRequests.values()) pending.reject(event.error)
@@ -317,19 +429,9 @@ function 打印纯前端HTTP日志(
     'color: #888888;',
   )
 
-  console.log('请求头 (Headers):', 头信息)
-
-  if (typeof 请求体 === 'string' && 请求体.length > 0) {
-    try {
-      console.log('请求体 (Body):', JSON.parse(请求体))
-    } catch {
-      console.log('请求体 (Body):', 请求体)
-    }
-  } else {
-    console.log('请求体 (Body):', 请求体)
-  }
-
-  console.log('响应体 (Response):', 响应结果)
+  console.log('请求头 (Headers):', 脱敏请求头(头信息))
+  console.log('请求体 (Body):', 获得请求体摘要(请求体))
+  console.log('响应状态 (Response Status):', 状态文本)
 
   console.groupEnd()
 }
@@ -376,9 +478,13 @@ function withPureFrontendDatabaseLock<T>(task: () => Promise<T>): Promise<T> {
   )
 }
 
-function requestPureFrontendWorker(
+async function requestPureFrontendWorker(
   message: PureFrontendWorkerRequest,
 ): Promise<object | { status: 'unexpected'; data: string }> {
+  return 解析接口响应(JSON.parse((await requestPureFrontendWorkerResponse(message)).body))
+}
+
+function requestPureFrontendWorkerResponse(message: PureFrontendWorkerRequest): Promise<PureFrontendWorkerResponse> {
   let id = ++pureFrontendRequestId
   return new Promise((resolve, reject) => {
     pureFrontendPendingRequests.set(id, { resolve, reject })

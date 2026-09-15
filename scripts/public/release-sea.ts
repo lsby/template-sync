@@ -9,6 +9,7 @@ let __当前目录名 = path.dirname(__当前文件名)
 let 项目根目录 = path.resolve(__当前目录名, '../../')
 let 相对发布目录 = 'release/sea'
 let 发布目录 = path.join(项目根目录, 相对发布目录)
+let 打包环境文件名 = '.env.production.sea'
 
 function 寻找内置Csc编译器(): string | null {
   let 框架目录组 = ['C:\\Windows\\Microsoft.NET\\Framework64', 'C:\\Windows\\Microsoft.NET\\Framework']
@@ -40,7 +41,7 @@ function 确保目录存在(目录路径: string): void {
  * 递归复制文件夹
  */
 function 递归复制(源路径: string, 目标路径: string): void {
-  if (!fs.existsSync(源路径)) return
+  if (fs.existsSync(源路径) === false) throw new Error(`缺少 SEA 发布所需资源目录: ${源路径}`)
   if (!fs.existsSync(目标路径)) fs.mkdirSync(目标路径, { recursive: true })
   let 所有项 = fs.readdirSync(源路径, { withFileTypes: true })
   for (let 项 of 所有项) {
@@ -143,15 +144,14 @@ async function 执行构建(): Promise<void> {
 
     // 拷贝 sqlite wasm (node-sqlite3-wasm 库需要它在二进制运行目录下)
     let WASM路径 = path.join(项目根目录, 'node_modules/node-sqlite3-wasm/dist/node-sqlite3-wasm.wasm')
-    if (fs.existsSync(WASM路径) === true) {
-      fs.copyFileSync(WASM路径, path.join(发布目录, 'node-sqlite3-wasm.wasm'))
-    }
+    if (fs.existsSync(WASM路径) === false) throw new Error(`缺少 SEA 发布所需 SQLite WASM 文件: ${WASM路径}`)
+    fs.copyFileSync(WASM路径, path.join(发布目录, 'node-sqlite3-wasm.wasm'))
 
     // 复制环境变量并修改为 sea 模式
     let 环境目标目录 = path.join(发布目录, '.env')
     确保目录存在(环境目标目录)
     let 环境变量内容 = fs.readFileSync(环境源文件, 'utf-8')
-    fs.writeFileSync(path.join(环境目标目录, '.env.production.sea'), 环境变量内容)
+    fs.writeFileSync(path.join(环境目标目录, 打包环境文件名), 环境变量内容)
 
     console.log('[9/9] 正在生成启动脚本...')
     if (process.platform === 'win32') {
@@ -162,7 +162,7 @@ async function 执行构建(): Promise<void> {
         'echo Starting template-sync ...',
         'echo.',
         'cd /d "%~dp0"',
-        'set "ENV_FILE_PATH=./.env/.env.production.sea"',
+        `set "ENV_FILE_PATH=./.env/${打包环境文件名}"`,
         'set "DEBUG=@lsby:*,@lsby:template-sync:*"',
         'lsby-template-sync.exe',
         'if errorlevel 1 (',
@@ -188,9 +188,9 @@ async function 执行构建(): Promise<void> {
       } else {
         console.log('✅ 正在编译引导器 lsby-template-sync.exe ...')
         try {
-          // 使用 /target:exe 避免控制台流异常
+          // 使用 Windows GUI 子系统，默认只显示托盘图标；控制台由引导器按需创建
           execSync(
-            `"${cscPath}" /nologo /target:exe /out:"${runExe路径}" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "${launcher源文件}"`,
+            `"${cscPath}" /nologo /target:winexe /out:"${runExe路径}" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "${launcher源文件}"`,
             { stdio: 'inherit' },
           )
           console.log(`✅ 已生成 ${runExe路径}`)
@@ -203,7 +203,7 @@ async function 执行构建(): Promise<void> {
         '#!/usr/bin/env bash',
         'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"',
         'cd "$DIR"',
-        'export ENV_FILE_PATH="./.env/.env.production.sea"',
+        `export ENV_FILE_PATH="./.env/${打包环境文件名}"`,
         'export DEBUG="@lsby:*,@lsby:template-sync:*"',
         'echo "=================================================="',
         'echo "template-sync (SEA单文件服务) 启动引导器"',

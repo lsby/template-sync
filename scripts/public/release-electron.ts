@@ -10,6 +10,7 @@ let __当前文件名 = fileURLToPath(import.meta.url)
 let __当前目录名 = path.dirname(__当前文件名)
 let 项目根目录 = path.resolve(__当前目录名, '../../')
 let 相对发布目录 = 'release/electron'
+let 打包环境文件名 = '.env.production.electron'
 
 function 寻找内置Csc编译器(): string | null {
   let 框架目录组 = ['C:\\Windows\\Microsoft.NET\\Framework64', 'C:\\Windows\\Microsoft.NET\\Framework']
@@ -83,12 +84,11 @@ async function 执行构建(): Promise<void> {
   try {
     let 是否生成Zip = await 询问是否打包Zip()
 
-    console.log('正在执行前置准备工作 (db:push, check, build)...')
-    execSync('npm run db:push:prod:electron', { stdio: 'inherit', cwd: 项目根目录 })
-    execSync('dotenv -e ./.env/.env.production.electron -- npm run _check:all', { stdio: 'inherit', cwd: 项目根目录 })
-    execSync('dotenv -e ./.env/.env.production.electron -- npm run _build:all', { stdio: 'inherit', cwd: 项目根目录 })
-
-    let 环境源文件 = path.resolve(项目根目录, '.env/.env.production.electron')
+    let 环境源文件相对路径 = process.env['ENV_FILE_PATH']
+    if (环境源文件相对路径 === undefined || 环境源文件相对路径 === '') {
+      throw new Error('❌ 缺少 ENV_FILE_PATH，请通过 npm run task -- public:electron 运行发布流程。')
+    }
+    let 环境源文件 = path.resolve(项目根目录, 环境源文件相对路径)
     let 数据库源文件 = path.resolve(项目根目录, 'db/prod-electron.db')
 
     // 1. 提前检查
@@ -158,7 +158,7 @@ async function 执行构建(): Promise<void> {
     }
     for (let 目标目录 of 环境目标路径组) {
       确保目录存在(目标目录)
-      let 环境目标文件 = path.join(目标目录, '.env.production.electron')
+      let 环境目标文件 = path.join(目标目录, 打包环境文件名)
       if (process.platform === 'win32') {
         let 环境内容 = fs
           .readFileSync(环境源文件, 'utf8')
@@ -233,9 +233,9 @@ async function 执行构建(): Promise<void> {
       } else {
         console.log('✅ 正在编译引导器 lsby-template-sync.exe ...')
         try {
-          // 使用 /target:exe 避免控制台流异常
+          // 使用 /target:winexe 避免控制台流异常
           execSync(
-            `"${cscPath}" /nologo /target:exe /out:"${runExe路径}" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "${launcher源文件}"`,
+            `"${cscPath}" /nologo /target:winexe /out:"${runExe路径}" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "${launcher源文件}"`,
             { stdio: 'inherit' },
           )
           console.log(`✅ 已生成 ${runExe路径}`)

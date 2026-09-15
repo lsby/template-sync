@@ -26,14 +26,14 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2(@capacitor/core@7.4.3)
       '@lsby/net-core':
-        specifier: ^0.14.19
-        version: 0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2)
+        specifier: ^0.14.22
+        version: 0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2)
       '@lsby/net-core-jwt':
         specifier: ^0.5.4
-        version: 0.5.4(@lsby/net-core@0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@types/node@25.0.6)(lightningcss@1.30.2)(zod@3.24.2)
+        version: 0.5.4(@lsby/net-core@0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@types/node@25.0.6)(lightningcss@1.30.2)(zod@3.24.2)
       '@lsby/net-core-kysely':
         specifier: ^0.6.0
-        version: 0.6.0(@lsby/net-core@0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@lsby/ts-kysely@0.2.10)(@types/node@25.0.6)(kysely@0.29.4)(lightningcss@1.30.2)(zod@3.24.2)
+        version: 0.6.0(@lsby/net-core@0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@lsby/ts-kysely@0.2.10)(@types/node@25.0.6)(kysely@0.29.4)(lightningcss@1.30.2)(zod@3.24.2)
       '@lsby/ts-env':
         specifier: ^0.0.14
         version: 0.0.14(@types/node@25.0.6)(lightningcss@1.30.2)
@@ -58,9 +58,6 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
-      cross-env:
-        specifier: ^7.0.3
-        version: 7.0.3
       dotenv:
         specifier: ^17.2.4
         version: 17.2.4
@@ -125,6 +122,9 @@ importers:
       '@types/bcryptjs':
         specifier: ^3.0.0
         version: 3.0.0
+      '@types/cross-spawn':
+        specifier: ^6.0.6
+        version: 6.0.6
       '@types/eslint':
         specifier: ^9.6.1
         version: 9.6.1
@@ -152,6 +152,9 @@ importers:
       bumpp:
         specifier: ^10.3.1
         version: 10.3.1(magicast@0.3.5)
+      cross-spawn:
+        specifier: ^7.0.6
+        version: 7.0.6
       electron:
         specifier: ^38.1.0
         version: 38.1.0
@@ -1216,14 +1219,15 @@ packages:
       kysely: ^0.29.2
       zod: 3.24.2
 
-  '@lsby/net-core@0.14.19':
-    resolution: {integrity: sha512-YXnakJflmm+wllbTP9WmilfBuLOrZuwrEpYJ1PsDWKjW0k+6gtmIPW1pBLdw0g/XulEPhULso+tboKTO0KIJmA==}
+  '@lsby/net-core@0.14.22':
+    resolution: {integrity: sha512-RiPHbrdYAetvVuDCacvxtnDod5P+R6nS+bni2txWbKvcunc3dQX9hGFi2d3F43F7Ena/kO+67nil0aqhR01FEA==}
     hasBin: true
     peerDependencies:
       '@lsby/ts-fp-data': ^0.2.7
       '@lsby/ts-log': ^0.3.0
       '@types/express': ^5.0.6
       express: ^5.2.1
+      typescript: ^5.9.3
       zod: 3.24.2
 
   '@lsby/ts-env@0.0.14':
@@ -2032,8 +2036,14 @@ packages:
   '@types/cross-spawn@6.0.2':
     resolution: {integrity: sha512-KuwNhp3eza+Rhu8IFI5HUXRP0LIhqH5cAjubUvGXXthh4YYBuP2ntwEX+Cz8GJoZUHlKo247wPWOfA9LYEq4cw==}
 
+  '@types/cross-spawn@6.0.6':
+    resolution: {integrity: sha512-fXRhhUkG4H3TQk5dBhQ7m/JDdSNHKwR2BBia62lhwEIq9xGiQKLxd6LymNhn47SjXhsUEPmxi+PKw2OkW4LLjA==}
+
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
+
+  '@types/debug@4.1.13':
+    resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
 
   '@types/debug@4.1.8':
     resolution: {integrity: sha512-/vPO1EPOs306Cvhwv7KfVfYvOJqA/S/AXjaHQiJboCZzcNDb+TIJFN9/2C9DZ//ijSKWioNyUxD792QmDJ+HKQ==}
@@ -2875,11 +2885,6 @@ packages:
 
   cross-dirname@0.1.0:
     resolution: {integrity: sha512-+R08/oI0nl3vfPcqftZRpytksBXDzOUveBq/NBVx0sUp1axwzPQrKinNx5yd5sxPu8j1wIy8AfnVQ+5eFdha6Q==}
-
-  cross-env@7.0.3:
-    resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
-    engines: {node: '>=10.14', npm: '>=6', yarn: '>=1'}
-    hasBin: true
 
   cross-spawn@7.0.3:
     resolution: {integrity: sha512-iRDPJKUPVEND7dHPO8rkbOnPpyDygcDFtWjpeWNCgy8WP2rXcxXL8TskReQl6OrB2G7+UJrags1q15Fudc7G6w==}
@@ -6986,9 +6991,9 @@ snapshots:
     dependencies:
       eslint: 9.39.2(jiti@2.6.1)
 
-  '@lsby/net-core-jwt@0.5.4(@lsby/net-core@0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@types/node@25.0.6)(lightningcss@1.30.2)(zod@3.24.2)':
+  '@lsby/net-core-jwt@0.5.4(@lsby/net-core@0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@types/node@25.0.6)(lightningcss@1.30.2)(zod@3.24.2)':
     dependencies:
-      '@lsby/net-core': 0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2)
+      '@lsby/net-core': 0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2)
       '@lsby/ts-fp-data': 0.2.7
       '@lsby/ts-jwt': 0.0.4(@types/node@25.0.6)(lightningcss@1.30.2)
       '@lsby/ts-log': 0.3.1(@types/node@25.0.6)(lightningcss@1.30.2)
@@ -7010,9 +7015,9 @@ snapshots:
       - supports-color
       - terser
 
-  '@lsby/net-core-kysely@0.6.0(@lsby/net-core@0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@lsby/ts-kysely@0.2.10)(@types/node@25.0.6)(kysely@0.29.4)(lightningcss@1.30.2)(zod@3.24.2)':
+  '@lsby/net-core-kysely@0.6.0(@lsby/net-core@0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2))(@lsby/ts-fp-data@0.2.7)(@lsby/ts-kysely@0.2.10)(@types/node@25.0.6)(kysely@0.29.4)(lightningcss@1.30.2)(zod@3.24.2)':
     dependencies:
-      '@lsby/net-core': 0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2)
+      '@lsby/net-core': 0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2)
       '@lsby/ts-fp-data': 0.2.7
       '@lsby/ts-kysely': 0.2.10
       '@lsby/ts-log': 0.3.1(@types/node@25.0.6)(lightningcss@1.30.2)
@@ -7035,7 +7040,7 @@ snapshots:
       - supports-color
       - terser
 
-  '@lsby/net-core@0.14.19(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(zod@3.24.2)':
+  '@lsby/net-core@0.14.22(@lsby/ts-fp-data@0.2.7)(@lsby/ts-log@0.3.1(@types/node@25.0.6)(lightningcss@1.30.2))(@types/express@5.0.6)(express@5.2.1)(typescript@5.9.3)(zod@3.24.2)':
     dependencies:
       '@lsby/ts-fp-data': 0.2.7
       '@lsby/ts-log': 0.3.1(@types/node@25.0.6)(lightningcss@1.30.2)
@@ -7044,6 +7049,7 @@ snapshots:
       express: 5.2.1
       multer: 2.0.2
       short-uuid: 5.2.0
+      typescript: 5.9.3
       ws: 8.18.3
       zod: 3.24.2
     transitivePeerDependencies:
@@ -8294,7 +8300,15 @@ snapshots:
     dependencies:
       '@types/node': 25.0.6
 
+  '@types/cross-spawn@6.0.6':
+    dependencies:
+      '@types/node': 25.0.6
+
   '@types/debug@4.1.12':
+    dependencies:
+      '@types/ms': 2.1.0
+
+  '@types/debug@4.1.13':
     dependencies:
       '@types/ms': 2.1.0
 
@@ -9011,7 +9025,7 @@ snapshots:
   builder-util@26.0.11:
     dependencies:
       7zip-bin: 5.2.0
-      '@types/debug': 4.1.12
+      '@types/debug': 4.1.13
       app-builder-bin: 5.0.0-alpha.12
       builder-util-runtime: 9.3.1
       chalk: 4.1.2
@@ -9379,10 +9393,6 @@ snapshots:
 
   cross-dirname@0.1.0:
     optional: true
-
-  cross-env@7.0.3:
-    dependencies:
-      cross-spawn: 7.0.6
 
   cross-spawn@7.0.3:
     dependencies:

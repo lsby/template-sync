@@ -2,6 +2,7 @@ import { 组件基类 } from '../../base/base'
 import { API管理器 } from '../../global/manager/api-manager'
 import { 创建元素 } from '../../global/tools/create-element'
 import { 普通按钮 } from '../general/base/base-button'
+import { 创建图标 } from '../general/base/icon'
 import { 表格组件 } from '../general/table/table'
 import { 数据表加载数据参数 } from '../general/table/types'
 
@@ -20,9 +21,13 @@ export class 数据库执行查询组件 extends 组件基类<发出事件类型
   private 选项卡列表: 选项卡数据[] = []
   private 当前选项卡索引: number = 0
   private 选项卡头容器: HTMLDivElement = 创建元素('div')
+  private 选项卡列表容器: HTMLDivElement = 创建元素('div')
   private 内容容器: HTMLDivElement = 创建元素('div')
+  private 选项卡按钮映射 = new Map<string, HTMLButtonElement>()
   private 添加选项卡按钮: 普通按钮 = new 普通按钮({
-    文本: '➕',
+    文本: '添加',
+    标题: '添加查询选项卡',
+    图标: 创建图标('plus'),
     点击处理函数: () => this.添加选项卡(),
     宿主样式: { display: 'flex' },
   })
@@ -48,7 +53,7 @@ export class 数据库执行查询组件 extends 组件基类<发出事件类型
   }
 
   private 生成选项卡Id(): string {
-    return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
   }
 
   protected override async 当加载时(): Promise<void> {
@@ -64,6 +69,10 @@ export class 数据库执行查询组件 extends 组件基类<发出事件类型
     this.选项卡头容器.style.gap = '10px'
     this.选项卡头容器.style.padding = '10px'
     this.选项卡头容器.style.overflowX = 'auto'
+    this.选项卡列表容器.style.display = 'flex'
+    this.选项卡列表容器.style.gap = '10px'
+    this.选项卡列表容器.setAttribute('role', 'tablist')
+    this.选项卡列表容器.setAttribute('aria-label', 'SQL 查询选项卡')
 
     this.内容容器.style.flex = '1'
     this.内容容器.style.display = 'flex'
@@ -82,46 +91,58 @@ export class 数据库执行查询组件 extends 组件基类<发出事件类型
   }
 
   private 更新选项卡头部(): void {
-    this.选项卡头容器.innerHTML = ''
+    this.选项卡头容器.replaceChildren()
+    this.选项卡列表容器.replaceChildren()
+    this.选项卡按钮映射.clear()
 
     this.选项卡列表.forEach((选项卡, 索引) => {
-      let 选项卡按钮 = 创建元素('div', {
+      let 选中 = 索引 === this.当前选项卡索引
+      let 包装器 = 创建元素('div', {
+        role: 'presentation',
         style: {
           display: 'flex',
           alignItems: 'center',
           gap: '5px',
-          padding: '6px 12px',
-          border: 索引 === this.当前选项卡索引 ? '1px solid var(--主色调)' : '1px solid var(--边框颜色)',
-          borderBottom: 索引 === this.当前选项卡索引 ? 'none' : '1px solid var(--边框颜色)',
-          backgroundColor: 索引 === this.当前选项卡索引 ? 'var(--主色调)' : 'var(--背景颜色)',
-          color: 索引 === this.当前选项卡索引 ? 'white' : 'var(--文字颜色)',
-          cursor: 'pointer',
+          padding: '2px 4px 2px 10px',
+          border: 选中 ? '1px solid var(--主色调)' : '1px solid var(--边框颜色)',
+          backgroundColor: 选中 ? 'var(--主色调-极淡)' : 'var(--背景颜色)',
+          color: 选中 ? 'var(--主色调)' : 'var(--文字颜色)',
           borderRadius: '4px 4px 0 0',
-          userSelect: 'none',
         },
       })
-
-      let 标题span = 创建元素('span', { textContent: 选项卡.标题, style: { flex: '1' } })
+      let 选项卡按钮 = 创建元素('button', {
+        id: `${选项卡.id}-tab`,
+        type: 'button',
+        role: 'tab',
+        tabIndex: 选中 ? 0 : -1,
+        textContent: 选项卡.标题,
+        style: { padding: '4px 2px', border: '0', backgroundColor: 'transparent', color: 'inherit', cursor: 'pointer' },
+      })
+      选项卡按钮.setAttribute('aria-selected', 选中 ? 'true' : 'false')
+      选项卡按钮.setAttribute('aria-controls', `${选项卡.id}-panel`)
+      选项卡按钮.onclick = (): void => this.切换选项卡(索引)
+      选项卡按钮.onkeydown = (事件: KeyboardEvent): void => this.处理选项卡键盘(事件, 索引)
+      this.选项卡按钮映射.set(选项卡.id, 选项卡按钮)
       let 关闭按钮 = new 普通按钮({
-        文本: '✕',
+        图标: 创建图标('close', 14),
+        标题: `关闭${选项卡.标题}`,
+        尺寸: '紧凑',
+        自动加载: false,
+        元素样式: { width: '26px', padding: '0', border: '0', backgroundColor: 'transparent' },
         点击处理函数: (e: Event): void => {
           e.stopPropagation()
           this.删除选项卡(索引)
         },
       })
-
-      选项卡按钮.appendChild(标题span)
-      选项卡按钮.appendChild(关闭按钮)
-      选项卡按钮.onclick = (): void => this.切换选项卡(索引)
-
-      this.选项卡头容器.appendChild(选项卡按钮)
+      包装器.append(选项卡按钮, 关闭按钮)
+      this.选项卡列表容器.appendChild(包装器)
     })
 
-    this.选项卡头容器.appendChild(this.添加选项卡按钮)
+    this.选项卡头容器.append(this.选项卡列表容器, this.添加选项卡按钮)
   }
 
   private 更新选项卡内容(): void {
-    this.内容容器.innerHTML = ''
+    this.内容容器.replaceChildren()
 
     if (this.选项卡列表.length === 0) return
 
@@ -129,6 +150,9 @@ export class 数据库执行查询组件 extends 组件基类<发出事件类型
     if (当前选项卡 === undefined) return
 
     let 内容 = this.获取或创建选项卡内容(当前选项卡.id)
+    this.内容容器.id = `${当前选项卡.id}-panel`
+    this.内容容器.setAttribute('role', 'tabpanel')
+    this.内容容器.setAttribute('aria-labelledby', `${当前选项卡.id}-tab`)
 
     this.内容容器.appendChild(内容.sql输入)
     this.内容容器.appendChild(内容.执行按钮)
@@ -198,6 +222,20 @@ export class 数据库执行查询组件 extends 组件基类<发出事件类型
     if (index < 0 || index >= this.选项卡列表.length) return
     this.当前选项卡索引 = index
     this.更新UI()
+  }
+
+  private 处理选项卡键盘(事件: KeyboardEvent, 当前索引: number): void {
+    let 目标索引: number | null = null
+    if (事件.key === 'Home') 目标索引 = 0
+    else if (事件.key === 'End') 目标索引 = this.选项卡列表.length - 1
+    else if (事件.key === 'ArrowLeft') 目标索引 = (当前索引 - 1 + this.选项卡列表.length) % this.选项卡列表.length
+    else if (事件.key === 'ArrowRight') 目标索引 = (当前索引 + 1) % this.选项卡列表.length
+    if (目标索引 === null) return
+    事件.preventDefault()
+    let 目标选项卡 = this.选项卡列表[目标索引]
+    if (目标选项卡 === undefined) return
+    this.切换选项卡(目标索引)
+    this.选项卡按钮映射.get(目标选项卡.id)?.focus()
   }
 
   private 添加选项卡(): void {
@@ -305,6 +343,7 @@ export class 数据库执行查询组件 extends 组件基类<发出事件类型
 
     // 每次都重新创建表格以确保数据更新
     内容.表格组件 = new 表格组件<Record<string, any>>({
+      行键: (数据项, 索引): string => `${JSON.stringify(数据项)}-${索引}`,
       列配置,
       每页数量: 20,
       加载数据: async (
