@@ -450,6 +450,8 @@ export let 任务表 = 定义任务({
   },
   'public:oss:aliyun': {
     说明: '同步网页到阿里云 OSS',
+    环境文件: Web生产环境文件,
+    依赖: ['build:web'],
     运行: 命令('tsx', 'scripts/public/release-oss-aliyun.ts'),
     传递参数: true,
   },

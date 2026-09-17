@@ -44,7 +44,7 @@ jobs:
           New-Item -ItemType File -Force -Path db/prod-electron.db | Out-Null
 
       - name: 构建完整便携包
-        run: pnpm run public:electron -- --zip
+        run: pnpm run task -- public:electron -- --zip
 
       - name: 计算 Release 标签
         id: get_tag
