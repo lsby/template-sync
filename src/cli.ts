@@ -116,6 +116,17 @@ function 打印分析结果(结果: 仓库分析结果): void {
   console.log('')
 }
 
+function 生成冲突解决AI提示词(分支名称: string): string {
+  let 内容 = [
+    `我在将模板同步分支 "${分支名称}" 合并到当前项目时产生了 Git 冲突。`,
+    `请协助我分析并解决当前产生的所有合并冲突，遵循以下原则：`,
+    `1. 业务逻辑优先：若冲突涉及项目自有的业务代码、业务配置或依赖，必须保留项目自身的改动，切勿被模板覆盖。`,
+    `2. 模板升级吸收：若冲突属于模板的基础设施、工程脚本、工具链、规范配置或公共类型优化，在不破坏项目定制的前提下尽量吸纳模板更新。`,
+    `3. 兼顾合并：若双方均有合理改动（如 package.json 依赖、全局配置等），请仔细合并两者，不要遗漏任意一方的必要变更。`,
+  ]
+  return 内容.join('\n')
+}
+
 function 打印嫁接结果(结果: 嫁接结果): void {
   console.log(`\n${样式.粗体(样式.绿色('✨ 嫁接分支创建成功！'))}\n`)
   console.log(`  ${样式.粗体('目标分支')}:   ${样式.青色(结果.导入分支)}`)
@@ -133,6 +144,10 @@ function 打印嫁接结果(结果: 嫁接结果): void {
   console.log(`     ${样式.高亮(结果.合并命令)}\n`)
   console.log(`  ${样式.粗体('2. 或 变基模板更新 (线性提交历史):')}`)
   console.log(`     ${样式.高亮(结果.变基命令)}\n`)
+  console.log(`  ${样式.粗体('3. 若合并产生冲突，可直接复制以下提示词给 AI 协助处理:')}\n`)
+  console.log(样式.灰色('--- AI 冲突解决提示词 (可直接复制) ---'))
+  console.log(样式.青色(生成冲突解决AI提示词(结果.导入分支)))
+  console.log(样式.灰色('--------------------------------------\n'))
 }
 
 async function 执行合并(项目路径: string, 分支名称: string): Promise<void> {
@@ -146,7 +161,11 @@ async function 执行合并(项目路径: string, 分支名称: string): Promise
   } catch (error) {
     let message = error instanceof Error ? error.message : String(error)
     console.warn(`\n${样式.黄色('⚠️ 自动合并发生冲突或提示:')}\n${message}`)
-    console.log(样式.灰色('请根据 Git 提示解决冲突后完成 commit。'))
+    console.log(样式.灰色('请根据 Git 提示解决冲突后完成 commit。\n'))
+    console.log(`${样式.粗体(样式.青色('💡 AI 冲突解决提示词 (可直接复制给 AI 协助处理):'))}\n`)
+    console.log(样式.灰色('--- AI 冲突解决提示词 (可直接复制) ---'))
+    console.log(样式.青色(生成冲突解决AI提示词(分支名称)))
+    console.log(样式.灰色('--------------------------------------\n'))
   }
 }
 
