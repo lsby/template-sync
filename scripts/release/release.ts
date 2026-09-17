@@ -28,16 +28,7 @@ let 主程序 = (): void => {
     let 版本号 = 获取版本号()
     console.log(`\n🚀 开始发布流程: v${版本号}...\n`)
 
-    // 步骤 1: 生成 meta 信息与接口定义
-    执行命令('cross-env DEBUG=@lsby:*,@lsby:template-sync:* npm run _gen:all', '生成代码与接口定义')
-
-    // 步骤 2: 代码与类型检查
-    执行命令('dotenv -e ./.env/.env.production.web -- npm run _check:all', '代码与类型检查')
-
-    // 步骤 3: 完整构建验证产物
-    执行命令('dotenv -e ./.env/.env.production.web -- npm run _build:all', '构建项目')
-
-    // 步骤 4: 添加所有更改到 git
+    // 步骤 1: 添加所有更改到 git
     执行命令('git add .', '添加文件到 git')
 
     // 步骤 2: 创建提交
@@ -50,8 +41,8 @@ let 主程序 = (): void => {
     执行命令('git push', '推送提交到远程')
     执行命令('git push --tags', '推送标签到远程')
 
-    // 步骤 6: 同步网页到阿里云 OSS
-    执行命令('npm run public:oss:aliyun -- --yes', '同步网页到阿里云 OSS')
+    // 步骤 5: 同步网页到阿里云 OSS
+    执行命令('tsx scripts/public/release-oss-aliyun.ts --yes', '同步网页到阿里云 OSS')
 
     console.log('✨ 流程完成！')
   } catch (_错误) {

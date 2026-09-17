@@ -448,6 +448,11 @@ export let 任务表 = 定义任务({
     运行: 命令('tsx', 'scripts/public/release-pure-frontend.ts'),
     传递参数: true,
   },
+  'public:oss:aliyun': {
+    说明: '同步网页到阿里云 OSS',
+    运行: 命令('tsx', 'scripts/public/release-oss-aliyun.ts'),
+    传递参数: true,
+  },
 
   // 发布
   'release:verify': { 说明: '发布前运行单元测试并完成构建', 依赖: ['test:unit', 'build:all'], 公开: false },
