@@ -37,6 +37,15 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
+      - name: 创建 Electron 生产环境配置
+        shell: pwsh
+        env:
+          ELECTRON_ENV_FILE: ${{ secrets.ELECTRON_ENV_FILE }}
+        run: |
+          if (-not $env:ELECTRON_ENV_FILE) { throw "缺少仓库 Secret ELECTRON_ENV_FILE" }
+          New-Item -ItemType Directory -Force -Path .env | Out-Null
+          Set-Content -Path .env/.env.production.electron -Value $env:ELECTRON_ENV_FILE
+
       - name: 准备 Electron 数据库
         shell: pwsh
         run: |
