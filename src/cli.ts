@@ -13,6 +13,7 @@ import {
 } from './template-sync/config-service'
 import { 分析仓库, 列出模板分支, 创建嫁接 } from './template-sync/git-service'
 import { 规范化并解析路径 } from './template-sync/path-service'
+import { 推断当前目录同步范围 } from './template-sync/project-scope-service'
 import type { 仓库分析参数, 仓库分析结果, 创建嫁接参数, 嫁接结果, 提交信息 } from './template-sync/types'
 
 let execFileAsync = promisify(execFile)
@@ -66,6 +67,7 @@ ${样式.粗体('传参同步:')}
 
 ${样式.粗体('选项:')}
   ${样式.黄色('-p, --project <路径>')}     项目仓库路径 (默认: 当前工作目录)
+  ${样式.黄色('--project-prefix <子目录>')} 将模板同步到项目仓库内的可选子目录
   ${样式.黄色('-t, --template <路径>')}    模板仓库路径 (覆盖全局默认配置)
   ${样式.黄色('-b, --branch <分支名>')}    模板分支名称 (默认自动检测 main/master)
   ${样式.黄色('-o, --output <分支名>')}    输出分支名称 (默认: template-sync/YYYYMMDD-HHMMSS)
@@ -102,10 +104,11 @@ function 格式化提交卡片(标签: string, 提交: 提交信息): void {
 function 打印分析结果(结果: 仓库分析结果): void {
   console.log(`\n${样式.粗体(样式.青色('=== 仓库分析与历史匹配结果 ==='))}\n`)
   console.log(`  ${样式.粗体('项目仓库')}: ${结果.项目路径}`)
+  if (结果.项目子目录 !== undefined) console.log(`  ${样式.粗体('项目子目录')}: ${结果.项目子目录}`)
   console.log(`  ${样式.粗体('模板仓库')}: ${结果.模板路径} (${样式.黄色(结果.模板分支)})`)
   console.log('')
 
-  格式化提交卡片('项目起点提交', 结果.项目起点)
+  格式化提交卡片(结果.项目子目录 === undefined ? '项目起点提交' : '项目匹配提交', 结果.项目起点)
   格式化提交卡片('匹配的模板起点', 结果.模板起点)
   格式化提交卡片('模板最新提交', 结果.模板最新)
 
@@ -228,6 +231,7 @@ async function 处理配置命令(子命令: string, 参数列表: string[]): Pr
 
 async function 交互式向导流程(初始参数: {
   项目路径: string | undefined
+  项目子目录: string | undefined
   模板路径: string | undefined
   模板分支: string | undefined
   输出分支: string | undefined
@@ -250,6 +254,16 @@ async function 交互式向导流程(初始参数: {
     },
   ])
   let 项目路径 = 规范化并解析路径(项目问答.项目路径.trim()).路径
+
+  let 子目录问答 = await inquirer.prompt<{ 项目子目录: string }>([
+    {
+      type: 'input',
+      name: '项目子目录',
+      message: '请输入项目内的模板子目录（留空表示整个项目）:',
+      default: 初始参数.项目子目录 ?? '',
+    },
+  ])
+  let 项目子目录 = 子目录问答.项目子目录.trim()
 
   // 2. 模板路径
   let 配置模板路径 = 获取默认模板路径()
@@ -308,7 +322,7 @@ async function 交互式向导流程(初始参数: {
 
   // 4. 分析仓库
   console.log(样式.灰色('正在分析仓库历史与匹配公共树...'))
-  let 分析参数: 仓库分析参数 = { 项目路径, 模板路径, 模板分支 }
+  let 分析参数: 仓库分析参数 = { 项目路径, ...(项目子目录 === '' ? {} : { 项目子目录 }), 模板路径, 模板分支 }
   let 分析结果 = await 分析仓库(分析参数)
   打印分析结果(分析结果)
 
@@ -366,6 +380,7 @@ async function 交互式向导流程(初始参数: {
 
 async function 参数化或一键同步流程(
   项目路径: string,
+  项目子目录: string | undefined,
   模板路径: string,
   模板分支参数: string | undefined,
   输出分支参数: string | undefined,
@@ -390,8 +405,14 @@ async function 参数化或一键同步流程(
     }
   }
 
-  let 分析参数: 仓库分析参数 = { 项目路径, 模板路径, 模板分支 }
-  console.log(样式.灰色(`正在分析仓库: [项目: ${项目路径}] <-> [模板: ${模板路径} (${模板分支})] ...`))
+  let 分析参数: 仓库分析参数 = {
+    项目路径,
+    ...(项目子目录 === undefined || 项目子目录.trim() === '' ? {} : { 项目子目录 }),
+    模板路径,
+    模板分支,
+  }
+  let 项目显示路径 = 项目子目录 === undefined || 项目子目录.trim() === '' ? 项目路径 : `${项目路径} (${项目子目录})`
+  console.log(样式.灰色(`正在分析仓库: [项目: ${项目显示路径}] <-> [模板: ${模板路径} (${模板分支})] ...`))
   let 分析结果 = await 分析仓库(分析参数)
   打印分析结果(分析结果)
 
@@ -425,6 +446,7 @@ async function 参数化或一键同步流程(
 async function 主入口(): Promise<void> {
   let 参数选项 = {
     project: { type: 'string' as const, short: 'p' },
+    'project-prefix': { type: 'string' as const },
     template: { type: 'string' as const, short: 't' },
     branch: { type: 'string' as const, short: 'b' },
     output: { type: 'string' as const, short: 'o' },
@@ -473,6 +495,7 @@ async function 主入口(): Promise<void> {
   let 自动合并 = values.merge === true
 
   let 项目路径参数 = typeof values.project === 'string' ? values.project : 位置参数列表[0]
+  let 项目子目录 = typeof values['project-prefix'] === 'string' ? values['project-prefix'] : undefined
   let 模板路径参数 = typeof values.template === 'string' ? values.template : 位置参数列表[1]
   let 模板分支 = typeof values.branch === 'string' ? values.branch : undefined
   let 输出分支 = typeof values.output === 'string' ? values.output : undefined
@@ -487,10 +510,33 @@ async function 主入口(): Promise<void> {
       ? 规范化并解析路径(项目路径参数.trim()).路径
       : process.cwd()
 
+  let 显式指定项目范围 =
+    (项目路径参数 !== undefined && 项目路径参数.trim() !== '') || typeof values['project-prefix'] === 'string'
+  if (显式指定项目范围 === false && 显式指定交互 === false && 实际模板路径 !== undefined) {
+    let 推断范围 = await 推断当前目录同步范围({
+      当前目录: process.cwd(),
+      允许询问: process.stdin.isTTY === true && process.stdout.isTTY === true,
+      确认使用当前目录: async (推断子目录: string): Promise<boolean> => {
+        let 回答 = await inquirer.prompt<{ 使用当前目录: boolean }>([
+          {
+            type: 'confirm',
+            name: '使用当前目录',
+            message: `当前目录是 Git 仓库子目录 "${推断子目录}"，是否仅同步此子目录？`,
+            default: true,
+          },
+        ])
+        return 回答.使用当前目录
+      },
+    })
+    实际项目路径 = 推断范围.项目路径
+    项目子目录 = 推断范围.项目子目录
+  }
+
   // 如果显式指定交互，或者既没有传模板路径也没有全局配置
   if (显式指定交互 === true || 实际模板路径 === undefined) {
     await 交互式向导流程({
       项目路径: 实际项目路径,
+      项目子目录,
       模板路径: 模板路径参数,
       模板分支,
       输出分支,
@@ -502,7 +548,7 @@ async function 主入口(): Promise<void> {
   }
 
   // 已经有项目路径和模板路径（直接传参或使用全局默认配置）
-  await 参数化或一键同步流程(实际项目路径, 实际模板路径, 模板分支, 输出分支, 仅分析, 自动确认, 自动合并)
+  await 参数化或一键同步流程(实际项目路径, 项目子目录, 实际模板路径, 模板分支, 输出分支, 仅分析, 自动确认, 自动合并)
 }
 
 主入口().catch((错误) => {

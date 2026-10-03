@@ -52,10 +52,11 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
 
   private 当前参数(): 仓库分析参数 {
     let 模板分支 = this.元素<HTMLSelectElement>('template-branch').value
+    let 项目子目录 = this.元素<HTMLInputElement>('project-prefix').value.trim()
     if (this.项目路径 === '') throw new Error('请选择项目仓库')
     if (this.模板路径 === '') throw new Error('请选择模板仓库')
     if (模板分支 === '') throw new Error('请选择模板分支')
-    return { 项目路径: this.项目路径, 模板路径: this.模板路径, 模板分支 }
+    return { 项目路径: this.项目路径, ...(项目子目录 === '' ? {} : { 项目子目录 }), 模板路径: this.模板路径, 模板分支 }
   }
 
   private 当前创建参数(): 创建嫁接参数 {
@@ -67,6 +68,7 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
   private 设置忙碌(忙碌: boolean): void {
     for (let button of this.shadow.querySelectorAll<HTMLButtonElement>('button')) button.disabled = 忙碌
     this.元素<HTMLSelectElement>('template-branch').disabled = 忙碌
+    this.元素<HTMLInputElement>('project-prefix').disabled = 忙碌
     this.元素<HTMLInputElement>('output-branch').disabled = 忙碌
   }
 
@@ -135,6 +137,11 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
       this.分析结果 = result
       this.嫁接结果 = null
       this.填充提交('project-root', result.项目起点)
+      this.元素<HTMLElement>('project-root-label').textContent =
+        result.项目子目录 === undefined ? '项目起点' : '项目匹配提交'
+      let 子目录信息 = this.元素<HTMLElement>('project-prefix-fact')
+      子目录信息.hidden = result.项目子目录 === undefined
+      子目录信息.textContent = result.项目子目录 === undefined ? '' : `项目子目录 ${result.项目子目录}`
       this.填充提交('template-root', result.模板起点)
       this.填充提交('template-tip', result.模板最新)
       this.元素<HTMLElement>('update-count').textContent = String(result.更新提交数)
@@ -284,6 +291,11 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
             <button id="select-project">选择</button>
           </div>
           <div class="field">
+            <label for="project-prefix">项目子目录</label>
+            <input id="project-prefix" placeholder="可选，例如 packages/web；留空表示整个项目" spellcheck="false" />
+            <span></span>
+          </div>
+          <div class="field">
             <label for="template-path">模板仓库</label>
             <input id="template-path" readonly placeholder="选择模板目录" />
             <button id="select-template">选择</button>
@@ -303,7 +315,7 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
           <h2><span class="step">2</span>确认嫁接信息</h2>
           <div class="commit-grid">
             <article class="commit">
-              <div class="commit-label">项目起点</div>
+              <div class="commit-label" id="project-root-label">项目起点</div>
               <div class="commit-title" id="project-root-subject"></div>
               <div class="meta"><span id="project-root-hash"></span><span id="project-root-time"></span></div>
             </article>
@@ -319,6 +331,7 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
             </article>
           </div>
           <div class="facts">
+            <span id="project-prefix-fact" hidden></span>
             <span>模板更新 <strong id="update-count"></strong> 个提交</span>
             <span>嫁接入口 <strong id="boundary-count"></strong> 个</span>
             <span>更早模板历史不会进入输出分支</span>

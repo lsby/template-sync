@@ -1,5 +1,6 @@
 import { execFile, spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { 规范化并解析路径 } from './path-service'
@@ -8,7 +9,7 @@ import type { 仓库分析参数, 仓库分析结果, 创建嫁接参数, 嫁接
 let execFileAsync = promisify(execFile)
 let 模板源引用 = 'refs/template-sync/source'
 
-type Git执行选项 = { 允许失败?: boolean; 禁用替换?: boolean }
+type Git执行选项 = { 允许失败?: boolean; 禁用替换?: boolean; 环境变量?: NodeJS.ProcessEnv }
 
 type Git执行结果 = { stdout: string; stderr: string; 退出码: number }
 
@@ -23,7 +24,7 @@ async function 执行Git(工作目录: string, 参数: string[], 选项: Git执�
     throw new Error(`目录不存在：${工作目录}`)
   }
 
-  let env = { ...process.env }
+  let env = { ...process.env, ...选项.环境变量 }
   if (选项.禁用替换 === true) env['GIT_NO_REPLACE_OBJECTS'] = '1'
 
   try {
@@ -112,6 +113,22 @@ async function 找到项目起点(项目路径: string): Promise<提交信息> {
   return await 读取提交(项目路径, roots[0])
 }
 
+function 规范化项目子目录(原始子目录: string | undefined): string | undefined {
+  if (原始子目录 === undefined || 原始子目录.trim() === '' || 原始子目录.trim() === '.') return undefined
+  let 统一路径 = 原始子目录.trim().replace(/\\/gu, '/')
+  if (统一路径.includes('\0') === true || path.posix.isAbsolute(统一路径) === true || /^[a-zA-Z]:\//u.test(统一路径)) {
+    throw new Error('项目子目录必须是项目仓库内的相对路径')
+  }
+  let 规范路径 = path.posix.normalize(统一路径).replace(/\/$/u, '')
+  if (规范路径 === '..' || 规范路径.startsWith('../') === true) {
+    throw new Error('项目子目录不能指向项目仓库之外')
+  }
+  if (规范路径 === '.git' || 规范路径.startsWith('.git/') === true) {
+    throw new Error('项目子目录不能位于 .git 内')
+  }
+  return 规范路径
+}
+
 async function 读取分支提交(模板路径: string, 模板分支: string): Promise<提交信息[]> {
   let format = '%H%x00%T%x00%ct%x00%s'
   let result = await 执行Git(模板路径, ['log', `--format=${format}`, 模板分支])
@@ -123,6 +140,44 @@ async function 读取分支提交(模板路径: string, 模板分支: string): P
       if (哈希 === undefined || 树哈希 === undefined || 时间文本 === undefined) throw new Error('模板提交记录格式异常')
       return { 哈希, 树哈希, 提交时间: Number.parseInt(时间文本, 10), 标题: 标题段.join('\0') }
     })
+}
+
+async function 读取项目第一父提交(项目路径: string): Promise<提交信息[]> {
+  let format = '%H%x00%T%x00%ct%x00%s'
+  let result = await 执行Git(项目路径, ['log', '--first-parent', `--format=${format}`, 'HEAD'])
+  return result.stdout
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => {
+      let [哈希, 树哈希, 时间文本, ...标题段] = line.split('\0')
+      if (哈希 === undefined || 树哈希 === undefined || 时间文本 === undefined) throw new Error('项目提交记录格式异常')
+      return { 哈希, 树哈希, 提交时间: Number.parseInt(时间文本, 10), 标题: 标题段.join('\0') }
+    })
+}
+
+async function 选择子目录起点(
+  项目路径: string,
+  项目子目录: string,
+  模板提交: 提交信息[],
+): Promise<{ 项目起点: 提交信息; 模板起点: 提交信息 }> {
+  let 项目提交 = await 读取项目第一父提交(项目路径)
+  let 项目提交按子树 = new Map<string, 提交信息[]>()
+  for (let 提交 of 项目提交) {
+    let result = await 执行Git(项目路径, ['rev-parse', '--verify', `${提交.哈希}:${项目子目录}`], { 允许失败: true })
+    if (result.退出码 !== 0) continue
+    let 子树提交 = { ...提交, 树哈希: result.stdout }
+    let 相同子树提交 = 项目提交按子树.get(result.stdout) ?? []
+    相同子树提交.push(子树提交)
+    项目提交按子树.set(result.stdout, 相同子树提交)
+  }
+
+  for (let 模板起点 of 模板提交) {
+    let 匹配项目提交 = 项目提交按子树.get(模板起点.树哈希)?.[0]
+    if (匹配项目提交 !== undefined) return { 项目起点: 匹配项目提交, 模板起点 }
+  }
+  throw new Error(
+    `没有在项目第一父历史的子目录 "${项目子目录}" 中找到与模板分支完全一致的树，请先提交一次未经修改的模板副本作为同步基线`,
+  )
 }
 
 function 选择模板起点(项目起点: 提交信息, 候选: 提交信息[]): 提交信息 {
@@ -166,6 +221,7 @@ export async function 分析仓库(参数: 仓库分析参数): Promise<仓库�
   if (参数.模板分支.trim() === '') throw new Error('请选择模板分支')
   let 项目路径 = 规范化并解析路径(参数.项目路径).路径
   let 模板路径 = 规范化并解析路径(参数.模板路径).路径
+  let 项目子目录 = 规范化项目子目录(参数.项目子目录)
   if (项目路径 === 模板路径) throw new Error('项目仓库和模板仓库不能是同一个目录')
 
   await 验证仓库(项目路径, '项目')
@@ -175,15 +231,24 @@ export async function 分析仓库(参数: 仓库分析参数): Promise<仓库�
   if (项目工作区干净 === false) throw new Error('项目工作区不干净，请先提交、暂存或清理改动')
 
   await 执行Git(模板路径, ['rev-parse', '--verify', `${参数.模板分支}^{commit}`])
-  let 项目起点 = await 找到项目起点(项目路径)
   let 模板提交 = await 读取分支提交(模板路径, 参数.模板分支)
-  let 模板起点 = 选择模板起点(项目起点, 模板提交)
+  let 项目起点: 提交信息
+  let 模板起点: 提交信息
+  if (项目子目录 === undefined) {
+    项目起点 = await 找到项目起点(项目路径)
+    模板起点 = 选择模板起点(项目起点, 模板提交)
+  } else {
+    let 子目录起点 = await 选择子目录起点(项目路径, 项目子目录, 模板提交)
+    项目起点 = 子目录起点.项目起点
+    模板起点 = 子目录起点.模板起点
+  }
   let 模板最新 = await 读取提交(模板路径, 参数.模板分支)
   let countResult = await 执行Git(模板路径, ['rev-list', '--count', `${模板起点.哈希}..${参数.模板分支}`])
   let 边界提交 = await 找到边界提交(模板路径, 参数.模板分支, 模板起点.哈希)
 
   return {
     项目路径,
+    ...(项目子目录 === undefined ? {} : { 项目子目录 }),
     模板路径,
     模板分支: 参数.模板分支,
     项目起点,
@@ -216,7 +281,7 @@ function 解析原始提交(内容: Buffer): 原始提交 {
   }
 }
 
-function 重写提交父级(原始: 原始提交, 新父提交: string[]): Buffer {
+function 重写提交父级(原始: 原始提交, 新父提交: string[], 新树哈希?: string): Buffer {
   let separator = 原始.内容.indexOf(Buffer.from('\n\n'))
   if (separator < 0) throw new Error('Git commit 对象缺少头部结束标记')
   let message = 原始.内容.subarray(separator + 2)
@@ -239,8 +304,20 @@ function 重写提交父级(原始: 原始提交, 新父提交: string[]): Buffe
   )
   let treeIndex = retained.findIndex((block) => block.startsWith('tree '))
   if (treeIndex < 0) throw new Error('Git commit 对象缺少 tree')
+  if (新树哈希 !== undefined) retained[treeIndex] = `tree ${新树哈希}`
   retained.splice(treeIndex + 1, 0, ...新父提交.map((parent) => `parent ${parent}`))
   return Buffer.concat([Buffer.from(`${retained.join('\n')}\n\n`, 'utf8'), message])
+}
+
+async function 构造子目录投影树(分析: 仓库分析结果, 模板提交: string, 临时索引路径: string): Promise<string> {
+  let 项目子目录 = 分析.项目子目录
+  if (项目子目录 === undefined) throw new Error('缺少项目子目录')
+  let 选项 = { 环境变量: { GIT_INDEX_FILE: 临时索引路径 }, 禁用替换: true }
+  await 执行Git(分析.项目路径, ['read-tree', 分析.项目起点.哈希], 选项)
+  await 执行Git(分析.项目路径, ['rm', '-r', '-f', '--cached', '--ignore-unmatch', '--', 项目子目录], 选项)
+  await 执行Git(分析.项目路径, ['read-tree', `--prefix=${项目子目录}/`, `${模板提交}^{tree}`], 选项)
+  let result = await 执行Git(分析.项目路径, ['write-tree'], 选项)
+  return result.stdout
 }
 
 async function 读取原始提交(项目路径: string, commit: string): Promise<原始提交> {
@@ -277,19 +354,26 @@ async function 物化模板尾部(分析: 仓库分析结果): Promise<{ tip: st
 
   let commitSet = new Set(commits)
   let mapping = new Map<string, string>([[分析.模板起点.哈希, 分析.项目起点.哈希]])
-  for (let commit of commits) {
-    let original = await 读取原始提交(分析.项目路径, commit)
-    let parents: string[] = []
-    for (let parent of original.父提交) {
-      let mapped = mapping.get(parent)
-      if (mapped !== undefined) parents.push(mapped)
-      else if (commitSet.has(parent)) throw new Error(`模板提交拓扑顺序异常：${parent}`)
-      else parents.push(分析.项目起点.哈希)
+  let 临时目录 = 分析.项目子目录 === undefined ? undefined : mkdtempSync(path.join(os.tmpdir(), 'template-sync-index-'))
+  try {
+    for (let commit of commits) {
+      let original = await 读取原始提交(分析.项目路径, commit)
+      let parents: string[] = []
+      for (let parent of original.父提交) {
+        let mapped = mapping.get(parent)
+        if (mapped !== undefined) parents.push(mapped)
+        else if (commitSet.has(parent)) throw new Error(`模板提交拓扑顺序异常：${parent}`)
+        else parents.push(分析.项目起点.哈希)
+      }
+      let uniqueParents = [...new Set(parents)]
+      if (uniqueParents.length === 0) uniqueParents.push(分析.项目起点.哈希)
+      let 新树哈希 =
+        临时目录 === undefined ? undefined : await 构造子目录投影树(分析, commit, path.join(临时目录, 'index'))
+      let rewritten = await 写入提交对象(分析.项目路径, 重写提交父级(original, uniqueParents, 新树哈希))
+      mapping.set(commit, rewritten)
     }
-    let uniqueParents = [...new Set(parents)]
-    if (uniqueParents.length === 0) uniqueParents.push(分析.项目起点.哈希)
-    let rewritten = await 写入提交对象(分析.项目路径, 重写提交父级(original, uniqueParents))
-    mapping.set(commit, rewritten)
+  } finally {
+    if (临时目录 !== undefined) rmSync(临时目录, { recursive: true, force: true })
   }
 
   let tip = mapping.get(分析.模板最新.哈希)

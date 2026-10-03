@@ -1,11 +1,12 @@
 export type 提交信息 = { 哈希: string; 树哈希: string; 提交时间: number; 标题: string }
 
-export type 仓库分析参数 = { 项目路径: string; 模板路径: string; 模板分支: string }
+export type 仓库分析参数 = { 项目路径: string; 模板路径: string; 模板分支: string; 项目子目录?: string }
 
 export type 创建嫁接参数 = 仓库分析参数 & { 输出分支: string }
 
 export type 仓库分析结果 = {
   项目路径: string
+  项目子目录?: string
   模板路径: string
   模板分支: string
   项目起点: 提交信息

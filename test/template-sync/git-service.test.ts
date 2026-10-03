@@ -174,4 +174,42 @@ describe('模板嫁接 Git 服务', () => {
     expect(await fs.readFile(path.join(项目, 'main.txt'), 'utf8')).toBe('main\n')
     expect(await fs.readFile(path.join(项目, 'feature.txt'), 'utf8')).toBe('feature\n')
   })
+
+  test('将模板更新投影到 monorepo 子目录且不影响其他目录', async () => {
+    let 模板 = await 创建仓库()
+    await 写文件(模板, 'base.txt', 'base\n')
+    let 模板起点 = await 提交全部(模板, 'template base')
+
+    let 项目 = await 创建仓库()
+    await 写文件(项目, 'packages/web/base.txt', 'base\n')
+    await 写文件(项目, 'core.txt', 'core\n')
+    let 项目起点 = await 提交全部(项目, 'copy template into monorepo')
+    await 写文件(项目, 'packages/web/project.txt', 'project\n')
+    await 写文件(项目, 'core.txt', 'custom core\n')
+    await 提交全部(项目, 'project customization')
+
+    await 写文件(模板, 'base.txt', 'updated base\n')
+    await 写文件(模板, 'template.txt', 'template\n')
+    await 提交全部(模板, 'template update')
+
+    let analysis = await 分析仓库({ 项目路径: 项目, 项目子目录: 'packages/web', 模板路径: 模板, 模板分支: 'main' })
+    expect(analysis.项目起点.哈希).toBe(项目起点)
+    expect(analysis.模板起点.哈希).toBe(模板起点)
+    expect(analysis.项目子目录).toBe('packages/web')
+
+    await 创建嫁接({
+      项目路径: 项目,
+      项目子目录: 'packages/web',
+      模板路径: 模板,
+      模板分支: 'main',
+      输出分支: 'sync/monorepo',
+    })
+    await git(项目, ['merge', '--no-edit', 'sync/monorepo'])
+
+    expect(await fs.readFile(path.join(项目, 'packages/web/base.txt'), 'utf8')).toBe('updated base\n')
+    expect(await fs.readFile(path.join(项目, 'packages/web/template.txt'), 'utf8')).toBe('template\n')
+    expect(await fs.readFile(path.join(项目, 'packages/web/project.txt'), 'utf8')).toBe('project\n')
+    expect(await fs.readFile(path.join(项目, 'core.txt'), 'utf8')).toBe('custom core\n')
+    await expect(fs.readFile(path.join(项目, 'template.txt'), 'utf8')).rejects.toThrow()
+  })
 })
