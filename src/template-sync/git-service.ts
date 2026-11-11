@@ -113,6 +113,50 @@ async function 找到项目起点(项目路径: string): Promise<提交信息> {
   return await 读取提交(项目路径, roots[0])
 }
 
+async function 读取起点配置(项目路径: string, 名称: string): Promise<string | undefined> {
+  let result = await 执行Git(项目路径, ['config', '--local', '--get', 名称], { 允许失败: true })
+  if (result.退出码 === 1) return undefined
+  if (result.退出码 !== 0) throw new Error(result.stderr)
+  if (result.stdout === '') throw new Error(`同步起点配置 ${名称} 不能为空`)
+  return result.stdout
+}
+
+async function 验证配置起点(仓库路径: string, 配置: string, 分支: string, 名称: string): Promise<提交信息> {
+  let result = await 执行Git(仓库路径, ['rev-parse', '--verify', '--end-of-options', `${配置}^{commit}`], {
+    允许失败: true,
+    禁用替换: true,
+  })
+  if (result.退出码 !== 0) throw new Error(`同步起点配置 ${名称} 不是有效提交：${配置}`)
+  let 祖先结果 = await 执行Git(仓库路径, ['merge-base', '--is-ancestor', result.stdout, 分支], {
+    允许失败: true,
+    禁用替换: true,
+  })
+  if (祖先结果.退出码 === 1) throw new Error(`同步起点配置 ${名称} 不属于 ${分支} 的历史：${配置}`)
+  if (祖先结果.退出码 !== 0) throw new Error(祖先结果.stderr)
+  return await 读取提交(仓库路径, result.stdout)
+}
+
+async function 读取配置起点(
+  项目路径: string,
+  模板路径: string,
+  模板分支: string,
+  项目子目录: string | undefined,
+): Promise<{ 项目起点: 提交信息; 模板起点: 提交信息 } | undefined> {
+  let [项目配置, 模板配置] = await Promise.all([
+    读取起点配置(项目路径, 'template-sync.project-base'),
+    读取起点配置(项目路径, 'template-sync.template-base'),
+  ])
+  if (项目配置 === undefined && 模板配置 === undefined) return undefined
+  if (项目配置 === undefined || 模板配置 === undefined)
+    throw new Error('必须同时配置 template-sync.project-base 和 template-sync.template-base')
+  if (项目子目录 !== undefined) throw new Error('仓库本地的同步起点配置仅支持整仓同步，请移除配置后使用子目录自动匹配')
+  let [项目起点, 模板起点] = await Promise.all([
+    验证配置起点(项目路径, 项目配置, 'HEAD', 'template-sync.project-base'),
+    验证配置起点(模板路径, 模板配置, 模板分支, 'template-sync.template-base'),
+  ])
+  return { 项目起点, 模板起点 }
+}
+
 function 规范化项目子目录(原始子目录: string | undefined): string | undefined {
   if (原始子目录 === undefined || 原始子目录.trim() === '' || 原始子目录.trim() === '.') return undefined
   let 统一路径 = 原始子目录.trim().replace(/\\/gu, '/')
@@ -234,7 +278,11 @@ export async function 分析仓库(参数: 仓库分析参数): Promise<仓库�
   let 模板提交 = await 读取分支提交(模板路径, 参数.模板分支)
   let 项目起点: 提交信息
   let 模板起点: 提交信息
-  if (项目子目录 === undefined) {
+  let 配置起点 = await 读取配置起点(项目路径, 模板路径, 参数.模板分支, 项目子目录)
+  if (配置起点 !== undefined) {
+    项目起点 = 配置起点.项目起点
+    模板起点 = 配置起点.模板起点
+  } else if (项目子目录 === undefined) {
     项目起点 = await 找到项目起点(项目路径)
     模板起点 = 选择模板起点(项目起点, 模板提交)
   } else {

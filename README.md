@@ -77,6 +77,19 @@ lsby-template-sync [项目路径] [模板路径] [选项]
 | `--version`                 | `-v` | 显示版本号                                           |
 | `--help`                    | `-h` | 显示帮助信息                                         |
 
+### 记录已确认的同步起点
+
+模板重写历史后，环境文件等差异可能导致原来的完整文件树无法自动匹配。确认两个提交确实对应同一个模板版本后，可在项目仓库记录一对完整提交哈希：
+
+```bash
+git config --local template-sync.project-base <项目历史中的模板提交哈希>
+git config --local template-sync.template-base <模板仓库中对应的提交哈希>
+lsby-template-sync --analyze-only
+lsby-template-sync --merge
+```
+
+这对本地配置优先于自动匹配，并持续用于后续同步；两项必须同时存在，项目提交必须属于当前 HEAD 的历史，模板提交必须属于所选模板分支的历史。配置代表您已确认这两个版本的对应关系，工具不会要求它们的文件树完全相同，因此应使用原始模板导入提交，避免把业务修改误认为模板内容。配置仅支持整仓同步，不会随 Git 提交传给其他克隆；恢复自动匹配时同时运行 `git config --local --unset template-sync.project-base` 和 `git config --local --unset template-sync.template-base`。
+
 ### Monorepo 子目录同步
 
 当模板作为 monorepo 内的一个子目录存在时，可以指定项目子目录：
