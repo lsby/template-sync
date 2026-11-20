@@ -5,6 +5,7 @@ export type 仓库分析参数 = { 项目路径: string; 模板路径: string; �
 export type 创建嫁接参数 = 仓库分析参数 & { 输出分支: string }
 
 export type 仓库分析结果 = {
+  同步方式: '复用历史' | '嫁接历史'
   项目路径: string
   项目子目录?: string
   模板路径: string

@@ -137,8 +137,7 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
       this.分析结果 = result
       this.嫁接结果 = null
       this.填充提交('project-root', result.项目起点)
-      this.元素<HTMLElement>('project-root-label').textContent =
-        result.项目子目录 === undefined ? '项目起点' : '项目匹配提交'
+      this.元素<HTMLElement>('project-root-label').textContent = '项目同步基点'
       let 子目录信息 = this.元素<HTMLElement>('project-prefix-fact')
       子目录信息.hidden = result.项目子目录 === undefined
       子目录信息.textContent = result.项目子目录 === undefined ? '' : `项目子目录 ${result.项目子目录}`
@@ -149,7 +148,7 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
       this.元素<HTMLInputElement>('output-branch').value = 默认输出分支()
       this.元素<HTMLElement>('result').hidden = false
       this.元素<HTMLElement>('graft-result').hidden = true
-      this.显示消息('匹配成功。请确认关键信息和输出分支名称。', 'success')
+      this.显示消息(`匹配成功，将${result.同步方式}。请确认关键信息和输出分支名称。`, 'success')
     } catch (error) {
       this.元素<HTMLElement>('result').hidden = true
       this.显示消息(错误消息(error), 'error')
@@ -168,10 +167,16 @@ export class 首页组件 extends 组件基类<发出事件类型, 监听事件�
       this.元素<HTMLElement>('rewritten-count').textContent = String(result.重建提交数)
       this.元素<HTMLElement>('merge-command').textContent = result.合并命令
       this.元素<HTMLElement>('rebase-command').textContent = result.变基命令
-      this.元素<HTMLElement>('connected-note').textContent =
-        result.重建提交数 === 0
-          ? '模板没有新的提交，导入分支直接指向项目起点。'
-          : `已将模板公共点之后的 ${result.重建提交数} 个提交重建到项目起点上；更早的模板历史不会被引入。`
+      switch (result.同步方式) {
+        case '复用历史':
+          this.元素<HTMLElement>('connected-note').textContent =
+            '导入分支直接指向模板最新提交，原始提交哈希和签名保持不变。'
+          break
+        case '嫁接历史':
+          this.元素<HTMLElement>('connected-note').textContent =
+            `导入分支已连接至项目历史，重建 ${result.重建提交数} 个提交；未改变父级和文件树的提交保持原样。`
+          break
+      }
       this.元素<HTMLElement>('graft-result').hidden = false
       this.元素<HTMLElement>('result').hidden = true
       this.显示消息('分支创建完成。它现在是项目仓库中的普通本地分支。', 'success')

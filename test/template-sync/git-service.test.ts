@@ -58,6 +58,7 @@ describe('模板嫁接 Git 服务', () => {
     let 模板更新 = await 提交全部(模板, 'template update')
 
     let analysis = await 分析仓库({ 项目路径: 项目, 模板路径: 模板, 模板分支: 'main' })
+    expect(analysis.同步方式).toBe('嫁接历史')
     expect(analysis.项目起点.哈希).toBe(项目起点)
     expect(analysis.模板起点.哈希).toBe(模板起点)
     expect(analysis.更新提交数).toBe(1)
@@ -193,6 +194,7 @@ describe('模板嫁接 Git 服务', () => {
     await 提交全部(模板, 'template update')
 
     let analysis = await 分析仓库({ 项目路径: 项目, 项目子目录: 'packages/web', 模板路径: 模板, 模板分支: 'main' })
+    expect(analysis.同步方式).toBe('嫁接历史')
     expect(analysis.项目起点.哈希).toBe(项目起点)
     expect(analysis.模板起点.哈希).toBe(模板起点)
     expect(analysis.项目子目录).toBe('packages/web')

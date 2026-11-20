@@ -1,89 +1,14 @@
-import { execFile, spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { promisify } from 'node:util'
+import { 找到共同历史 } from './common-history'
+import { 执行Git, 执行Git并输入 } from './git-executor'
 import { 规范化并解析路径 } from './path-service'
 import type { 仓库分析参数, 仓库分析结果, 创建嫁接参数, 嫁接结果, 提交信息 } from './types'
 
-let execFileAsync = promisify(execFile)
 let 模板源引用 = 'refs/template-sync/source'
 
-type Git执行选项 = { 允许失败?: boolean; 禁用替换?: boolean; 环境变量?: NodeJS.ProcessEnv }
-
-type Git执行结果 = { stdout: string; stderr: string; 退出码: number }
-
 type 原始提交 = { 内容: Buffer; 父提交: string[] }
-
-function 清理输出(value: string): string {
-  return value.replace(/\r\n/g, '\n').trim()
-}
-
-async function 执行Git(工作目录: string, 参数: string[], 选项: Git执行选项 = {}): Promise<Git执行结果> {
-  if (existsSync(工作目录) === false) {
-    throw new Error(`目录不存在：${工作目录}`)
-  }
-
-  let env = { ...process.env, ...选项.环境变量 }
-  if (选项.禁用替换 === true) env['GIT_NO_REPLACE_OBJECTS'] = '1'
-
-  try {
-    let result = await execFileAsync('git', 参数, {
-      cwd: 工作目录,
-      encoding: 'utf8',
-      env,
-      windowsHide: true,
-      maxBuffer: 16 * 1024 * 1024,
-    })
-    return { stdout: 清理输出(result.stdout), stderr: 清理输出(result.stderr), 退出码: 0 }
-  } catch (error) {
-    let gitError = error as NodeJS.ErrnoException & { stdout?: string; stderr?: string; code?: string | number }
-    if (gitError.code === 'ENOENT') {
-      if (existsSync(工作目录) === false) {
-        throw new Error(`目录不存在：${工作目录}`)
-      }
-      throw new Error('未找到 Git，请先安装 Git 并确保 git 命令可用')
-    }
-
-    let result = {
-      stdout: 清理输出(gitError.stdout ?? ''),
-      stderr: 清理输出(gitError.stderr ?? ''),
-      退出码: typeof gitError.code === 'number' ? gitError.code : 1,
-    }
-    if (选项.允许失败 === true) return result
-    let message =
-      result.stderr !== ''
-        ? result.stderr
-        : result.stdout !== ''
-          ? result.stdout
-          : `Git 命令执行失败：git ${参数.join(' ')}`
-    throw new Error(message)
-  }
-}
-
-async function 执行Git并输入(工作目录: string, 参数: string[], 输入: Buffer): Promise<Buffer> {
-  return await new Promise<Buffer>((resolve, reject) => {
-    let child = spawn('git', 参数, {
-      cwd: 工作目录,
-      env: { ...process.env, GIT_NO_REPLACE_OBJECTS: '1' },
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
-    let stdout: Buffer[] = []
-    let stderr: Buffer[] = []
-    child.stdout.on('data', (data: Buffer) => stdout.push(data))
-    child.stderr.on('data', (data: Buffer) => stderr.push(data))
-    child.on('error', (error) => reject(error))
-    child.on('close', (code) => {
-      if (code === 0) resolve(Buffer.concat(stdout))
-      else {
-        let errorOutput = Buffer.concat(stderr).toString('utf8').trim()
-        reject(new Error(errorOutput !== '' ? errorOutput : `Git 命令执行失败：git ${参数.join(' ')}`))
-      }
-    })
-    child.stdin.end(输入)
-  })
-}
 
 async function 验证仓库(仓库路径: string, 名称: string): Promise<void> {
   let 绝对路径 = path.resolve(仓库路径)
@@ -94,13 +19,13 @@ async function 验证仓库(仓库路径: string, 名称: string): Promise<void>
 }
 
 async function 工作区是否干净(仓库路径: string): Promise<boolean> {
-  let result = await 执行Git(仓库路径, ['status', '--porcelain=v1', '--untracked-files=normal'])
+  let result = await 执行Git(仓库路径, ['--no-optional-locks', 'status', '--porcelain=v1', '--untracked-files=normal'])
   return result.stdout === ''
 }
 
 async function 读取提交(仓库路径: string, 提交: string): Promise<提交信息> {
   let format = '%H%x00%T%x00%ct%x00%s'
-  let result = await 执行Git(仓库路径, ['show', '-s', `--format=${format}`, 提交])
+  let result = await 执行Git(仓库路径, ['show', '-s', `--format=${format}`, 提交], { 禁用替换: true })
   let [哈希, 树哈希, 时间文本, ...标题段] = result.stdout.split('\0')
   if (哈希 === undefined || 树哈希 === undefined || 时间文本 === undefined) throw new Error(`无法读取提交：${提交}`)
   return { 哈希, 树哈希, 提交时间: Number.parseInt(时间文本, 10), 标题: 标题段.join('\0') }
@@ -150,10 +75,8 @@ async function 读取配置起点(
   if (项目配置 === undefined || 模板配置 === undefined)
     throw new Error('必须同时配置 template-sync.project-base 和 template-sync.template-base')
   if (项目子目录 !== undefined) throw new Error('仓库本地的同步起点配置仅支持整仓同步，请移除配置后使用子目录自动匹配')
-  let [项目起点, 模板起点] = await Promise.all([
-    验证配置起点(项目路径, 项目配置, 'HEAD', 'template-sync.project-base'),
-    验证配置起点(模板路径, 模板配置, 模板分支, 'template-sync.template-base'),
-  ])
+  let 项目起点 = await 验证配置起点(项目路径, 项目配置, 'HEAD', 'template-sync.project-base')
+  let 模板起点 = await 验证配置起点(模板路径, 模板配置, 模板分支, 'template-sync.template-base')
   return { 项目起点, 模板起点 }
 }
 
@@ -275,34 +198,42 @@ export async function 分析仓库(参数: 仓库分析参数): Promise<仓库�
   if (项目工作区干净 === false) throw new Error('项目工作区不干净，请先提交、暂存或清理改动')
 
   await 执行Git(模板路径, ['rev-parse', '--verify', `${参数.模板分支}^{commit}`])
-  let 模板提交 = await 读取分支提交(模板路径, 参数.模板分支)
+  let 模板最新 = await 读取提交(模板路径, 参数.模板分支)
   let 项目起点: 提交信息
   let 模板起点: 提交信息
   let 配置起点 = await 读取配置起点(项目路径, 模板路径, 参数.模板分支, 项目子目录)
-  if (配置起点 !== undefined) {
+  let 共同历史 = 项目子目录 === undefined ? await 找到共同历史(项目路径, 模板路径, 模板最新.哈希) : undefined
+  let 同步方式: 仓库分析结果['同步方式'] = 共同历史 === undefined ? '嫁接历史' : '复用历史'
+  if (共同历史 !== undefined) {
+    模板起点 = await 读取提交(模板路径, 共同历史.起点哈希)
+    项目起点 = 模板起点
+  } else if (配置起点 !== undefined) {
     项目起点 = 配置起点.项目起点
     模板起点 = 配置起点.模板起点
   } else if (项目子目录 === undefined) {
     项目起点 = await 找到项目起点(项目路径)
-    模板起点 = 选择模板起点(项目起点, 模板提交)
+    模板起点 = 选择模板起点(项目起点, await 读取分支提交(模板路径, 模板最新.哈希))
   } else {
+    let 模板提交 = await 读取分支提交(模板路径, 模板最新.哈希)
     let 子目录起点 = await 选择子目录起点(项目路径, 项目子目录, 模板提交)
     项目起点 = 子目录起点.项目起点
     模板起点 = 子目录起点.模板起点
   }
-  let 模板最新 = await 读取提交(模板路径, 参数.模板分支)
-  let countResult = await 执行Git(模板路径, ['rev-list', '--count', `${模板起点.哈希}..${参数.模板分支}`])
-  let 边界提交 = await 找到边界提交(模板路径, 参数.模板分支, 模板起点.哈希)
+  let countResult = await 执行Git(模板路径, ['rev-list', '--count', `${模板起点.哈希}..${模板最新.哈希}`], {
+    禁用替换: true,
+  })
+  let 边界提交 = await 找到边界提交(模板路径, 模板最新.哈希, 模板起点.哈希)
 
   return {
     项目路径,
     ...(项目子目录 === undefined ? {} : { 项目子目录 }),
     模板路径,
     模板分支: 参数.模板分支,
+    同步方式,
     项目起点,
     模板起点,
     模板最新,
-    更新提交数: Number.parseInt(countResult.stdout, 10),
+    更新提交数: 共同历史?.更新提交数 ?? Number.parseInt(countResult.stdout, 10),
     边界提交,
     项目工作区干净,
     模板工作区干净,
@@ -334,6 +265,15 @@ function 重写提交父级(原始: 原始提交, 新父提交: string[], 新树
   if (separator < 0) throw new Error('Git commit 对象缺少头部结束标记')
   let message = 原始.内容.subarray(separator + 2)
   let headerLines = 原始.内容.subarray(0, separator).toString('utf8').split('\n')
+  let 树哈希 = headerLines.find((line) => line.startsWith('tree '))?.slice('tree '.length)
+  if (树哈希 === undefined) throw new Error('Git commit 对象缺少 tree')
+  if (
+    (新树哈希 === undefined || 新树哈希 === 树哈希) &&
+    原始.父提交.length === 新父提交.length &&
+    原始.父提交.every((parent, index) => parent === 新父提交[index])
+  ) {
+    return 原始.内容
+  }
   let blocks: string[] = []
   for (let line of headerLines) {
     if (line.startsWith(' ') && blocks.length > 0) {
@@ -403,6 +343,7 @@ async function 物化模板尾部(分析: 仓库分析结果): Promise<{ tip: st
   let commitSet = new Set(commits)
   let mapping = new Map<string, string>([[分析.模板起点.哈希, 分析.项目起点.哈希]])
   let 临时目录 = 分析.项目子目录 === undefined ? undefined : mkdtempSync(path.join(os.tmpdir(), 'template-sync-index-'))
+  let 重建提交数 = 0
   try {
     for (let commit of commits) {
       let original = await 读取原始提交(分析.项目路径, commit)
@@ -417,7 +358,9 @@ async function 物化模板尾部(分析: 仓库分析结果): Promise<{ tip: st
       if (uniqueParents.length === 0) uniqueParents.push(分析.项目起点.哈希)
       let 新树哈希 =
         临时目录 === undefined ? undefined : await 构造子目录投影树(分析, commit, path.join(临时目录, 'index'))
-      let rewritten = await 写入提交对象(分析.项目路径, 重写提交父级(original, uniqueParents, 新树哈希))
+      let 内容 = 重写提交父级(original, uniqueParents, 新树哈希)
+      let rewritten = 内容 === original.内容 ? commit : await 写入提交对象(分析.项目路径, 内容)
+      if (rewritten !== commit) 重建提交数 += 1
       mapping.set(commit, rewritten)
     }
   } finally {
@@ -426,7 +369,7 @@ async function 物化模板尾部(分析: 仓库分析结果): Promise<{ tip: st
 
   let tip = mapping.get(分析.模板最新.哈希)
   if (tip === undefined) throw new Error('无法确定重建后的模板分支末端')
-  return { tip, count: commits.length }
+  return { tip, count: 重建提交数 }
 }
 
 export async function 创建嫁接(参数: 创建嫁接参数): Promise<嫁接结果> {
@@ -438,7 +381,15 @@ export async function 创建嫁接(参数: 创建嫁接参数): Promise<嫁接�
   try {
     let sourceTip = await 执行Git(分析.项目路径, ['rev-parse', 模板源引用], { 禁用替换: true })
     if (sourceTip.stdout !== 分析.模板最新.哈希) throw new Error('模板分支在分析期间发生了变化，请重新分析')
-    let materialized = await 物化模板尾部(分析)
+    let materialized: { tip: string; count: number }
+    switch (分析.同步方式) {
+      case '复用历史':
+        materialized = { tip: 分析.模板最新.哈希, count: 0 }
+        break
+      case '嫁接历史':
+        materialized = await 物化模板尾部(分析)
+        break
+    }
     await 执行Git(分析.项目路径, ['update-ref', 导入引用, materialized.tip], { 禁用替换: true })
 
     return {
